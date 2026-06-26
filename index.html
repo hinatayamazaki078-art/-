@@ -305,67 +305,33 @@
 
 <div id="app-container">
 
-    <div id="screen-home" class="screen active">
-        <div class="header-status">
-            <div class="header-left">
-                <span id="player-name">👑 ゲスト</span>
-                <span id="player-level">Lv: 1</span>
-            </div>
-            <div class="coin-display">
-                <span class="coin-icon">🪙</span>
-                <span id="player-coins">0</span>
-                <div class="coin-plus-btn">＋</div>
-            </div>
-        </div>
-        <div class="avatar-area">
-            <div id="avatar-display" class="avatar-icon">🧑‍💻</div>
-            <p id="gacha-result">カジノへようこそ！</p>
-        </div>
-        <div>
-            <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 アバターガチャを回す (未実装)</button>
-            <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen()">⚔️ オフライン練習モード</button>
-        </div>
-    </div>
-
-    <div id="screen-build" class="screen">
-        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">カードコスト振り分け</h2>
-        <p style="text-align: center; color: #7f8c8d; margin-bottom: 5px;">コスト合計20を5枚に割り振ってください。</p>
-        <div class="cost-counter" id="cost-counter-div">残りコスト: <span id="remaining-cost">20</span></div>
-        
-        <div class="card-inputs" id="card-inputs-container"></div>
-
-        <button id="btn-start-battle" disabled onclick="startBattle()">バトル開始！</button>
-        <button style="background-color: #7f8c8d;" onclick="goToHome()">🏠 ホームに戻る</button>
-    </div>
-
-    <div id="screen-battle" class="screen">
-        <div class="score-board">
-            Player <span id="score-player" style="color:#2980b9;">0</span> - <span id="score-cpu" style="color:#c0392b;">0</span> CPU (3勝先取)
-        </div>
-        
-        <div class="battle-area">
-            <div class="cpu-area">
-                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">CPU HAND</h3>
-                <div id="cpu-hand" class="hand-cards"></div>
-            </div>
-
-            <div class="battle-log" id="battle-log">
-                <span>カードを1枚選んでください</span>
-            </div>
-
-            <div class="player-area">
-                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">YOUR HAND</h3>
-                <div id="player-hand" class="hand-cards"></div>
-            </div>
-        </div>
-        
-        <button id="btn-next-turn" style="display:none; background-color: #27ae60;" onclick="nextTurn()">次のターンへ</button>
-        <button id="btn-return-home" style="display:none; background-color: #d35400;" onclick="goToHome()">🏠 ロビーに戻る</button>
-    </div>
-
+    <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;" onclick="closeCharacter()">
+    <img src="ChatGPT Image 2026年6月27日 00_01_12.png" style="width:90%; height:auto; animation: fadeIn 0.5s;">
 </div>
 
+<style>
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+</style>
+
 <script>
+    // 既存のplayGacha関数を以下に書き換え
+    function playGacha() {
+        if (coins < 100) {
+            alert("コインが足りません！");
+            return;
+        }
+        coins -= 100;
+        updateCoinUI();
+        
+        // キャラクターを表示
+        document.getElementById('character-overlay').style.display = 'flex';
+        document.getElementById('gacha-result').innerText = `✨ 新しい仲間をゲット！`;
+    }
+
+    function closeCharacter() {
+        document.getElementById('character-overlay').style.display = 'none';
+    }
+</script>
     // データとステータス
     const avatars = ['🧑‍💻', '🧙‍♂️', '🥷', '🧛‍♀️', '🧟‍♂️', '🦸‍♂️', '🧝‍♀️', '🧞‍♂️', '🤖', '👽', '🦖', '🤵', '🎰', '🃏', '👑', '💰'];
     let currentAvatar = '🧑‍💻';
@@ -395,12 +361,22 @@
     }
 
     function playGacha() {
-        // ガチャロジックは後日コイン消費で実装可能
-        const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
-        currentAvatar = randomAvatar;
-        document.getElementById('avatar-display').innerText = currentAvatar;
-        document.getElementById('gacha-result').innerText = `✨ VIPアバター [ ${currentAvatar} ] を獲得！`;
+    // 1. コインが足りるかチェック
+    if (coins < 100) {
+        alert("コインが足りません！バトルで勝利して100コイン貯めよう！");
+        return; // ここで処理を止める
     }
+
+    // 2. コインを消費
+    coins -= 100;
+    updateCoinUI(); // 画面の表示を更新
+
+    // 3. ガチャの演出（今はランダムアバターの変更のみ）
+    const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+    currentAvatar = randomAvatar;
+    document.getElementById('avatar-display').innerText = currentAvatar;
+    document.getElementById('gacha-result').innerText = `✨ レアアバター [ ${currentAvatar} ] をゲット！`;
+}
 
     function goToBuildScreen() {
         showScreen('screen-build');
