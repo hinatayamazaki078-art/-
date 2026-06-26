@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カードバトル - オフライン練習</title>
+    <style>
+        /* ベーススタイル (スマホアプリ風のレイアウト) */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #2c3e50;
+            color: #333;
+            display: flex;
+            justify-content: center;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 414px;
+            height: 100vh;
+            background-color: #ecf0f1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .active {
+            display: flex;
+        }
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background-color: #3498db;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+        /* ホーム画面用スタイル */
+        .header-status {
+            background: #34495e;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .avatar-area {
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .avatar-icon {
+            font-size: 100px;
+            background: white;
+            width: 150px;
+            height: 150px;
+            line-height: 150px;
+            border-radius: 50%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .gacha-btn { background-color: #f1c40f; color: #333; }
+        .gacha-btn:hover { background-color: #f39c12; }
+
+        /* デッキ構築画面用スタイル */
+        .cost-counter {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #c0392b;
+        }
+        .card-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .card-input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .card-input-row input {
+            width: 60px;
+            font-size: 18px;
+            text-align: center;
+            padding: 5px;
+        }
+
+        /* バトル画面用スタイル */
+        .battle-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .cpu-area, .player-area {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .score-board {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #2c3e50;
+        }
+        .hand-cards { display: flex; justify-content: center; gap: 5px; margin-top: 10px; flex-wrap: wrap;}
+        .card {
+            width: 50px;
+            height: 70px;
+            background: #3498db;
+            color: white;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .card.cpu-card { background: #e74c3c; cursor: default; }
+        .card:hover { transform: translateY(-2px); }
+        .card.used { visibility: hidden; }
+        
+        /* 演出用 */
+        .battle-log {
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin: 10px 0;
+            min-height: 24px;
+            color: #e67e22;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+
+    <div id="screen-home" class="screen active">
+        <div class="header-status">
+            <span id="player-name">名前: ゲスト</span>
+            <span id="player-level">Lv: 1</span>
+        </div>
+        <div class="avatar-area">
+            <div id="avatar-display" class="avatar-icon">🧑‍💻</div>
+            <p id="gacha-result">アバターがここに表示されます</p>
+        </div>
+        <button class="gacha-btn" onclick="playGacha()">💎 アバターガチャを回す</button>
+        <button onclick="goToBuildScreen()">⚔️ オフライン練習モード</button>
+    </div>
+
+    <div id="screen-build" class="screen">
+        <h2 style="text-align: center;">カードコスト振り分け</h2>
+        <p style="text-align: center;">コスト合計20を5枚のカードに振り分けてください。</p>
+        <div class="cost-counter">残りコスト: <span id="remaining-cost">20</span></div>
+        
+        <div class="card-inputs" id="card-inputs-container">
+            </div>
+
+        <button id="btn-start-battle" disabled onclick="startBattle()">バトル開始！</button>
+        <button style="background-color: #7f8c8d;" onclick="goToHome()">🏠 ホームに戻る</button>
+    </div>
+
+    <div id="screen-battle" class="screen">
+        <div class="score-board">
+            プレイヤー <span id="score-player">0</span> - <span id="score-cpu">0</span> CPU (3勝先取)
+        </div>
+        
+        <div class="battle-area">
+            <div class="cpu-area">
+                <h3>CPUの手札</h3>
+                <div id="cpu-hand" class="hand-cards"></div>
+            </div>
+
+            <div class="battle-log" id="battle-log">カードを選んでください</div>
+
+            <div class="player-area">
+                <h3>あなたの手札</h3>
+                <div id="player-hand" class="hand-cards"></div>
+            </div>
+        </div>
+        
+        <button id="btn-next-turn" style="display:none;" onclick="nextTurn()">次のターンへ</button>
+        <button id="btn-return-home" style="display:none; background-color: #e74c3c;" onclick="goToHome()">🏠 結果を受け入れてホームへ</button>
+    </div>
+
+</div>
+
+<script>
+    // --- データとステータス ---
+    const avatars = ['🧑‍💻', '🧙‍♂️', '🥷', '🧛‍♀️', '🧟‍♂️', '🦸‍♂️', '🧝‍♀️', '🧞‍♂️', '🤖', '👽', '🦖'];
+    let currentAvatar = '🧑‍💻';
+    
+    // バトル用ステータス
+    const MAX_COST = 20;
+    const WIN_CONDITION = 3; // 3勝先取
+    let playerDeck = [];
+    let cpuDeck = [];
+    let playerWins = 0;
+    let cpuWins = 0;
+    let turnCount = 0;
+
+    // --- 画面遷移制御 ---
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function goToHome() {
+        showScreen('screen-home');
+    }
+
+    // --- ホーム画面機能 ---
+    function playGacha() {
+        // ガチャ演出風にランダムなアバターを取得
+        const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+        currentAvatar = randomAvatar;
+        document.getElementById('avatar-display').innerText = currentAvatar;
+        document.getElementById('gacha-result').innerText = "新しいアバターをゲット！";
+    }
+
+    // --- デッキ構築画面機能 ---
+    function goToBuildScreen() {
+        showScreen('screen-build');
+        renderCardInputs();
+        updateCost();
+    }
+
+    function renderCardInputs() {
+        const container = document.getElementById('card-inputs-container');
+        container.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            container.innerHTML += `
+                <div class="card-input-row">
+                    <span>カード ${i + 1}</span>
+                    <input type="number" class="card-cost-input" min="0" max="20" value="4" oninput="updateCost()">
+                </div>
+            `;
+        }
+    }
+
+    function updateCost() {
+        const inputs = document.querySelectorAll('.card-cost-input');
+        let total = 0;
+        inputs.forEach(input => total += Number(input.value) || 0);
+        
+        const remaining = MAX_COST - total;
+        const remainingEl = document.getElementById('remaining-cost');
+        remainingEl.innerText = remaining;
+        
+        const startBtn = document.getElementById('btn-start-battle');
+        if (remaining === 0) {
+            remainingEl.style.color = '#27ae60'; // 緑色
+            startBtn.disabled = false;
+        } else {
+            remainingEl.style.color = '#c0392b'; // 赤色
+            startBtn.disabled = true;
+        }
+    }
+
+    // --- バトルロジック ---
+    function generateCPUDeck() {
+        // コスト20を5枚にランダムに振り分ける
+        let deck = [0, 0, 0, 0, 0];
+        let points = MAX_COST;
+        while(points > 0) {
+            let idx = Math.floor(Math.random() * 5);
+            deck[idx]++;
+            points--;
+        }
+        return deck;
+    }
+
+    function startBattle() {
+        // プレイヤーのデッキを取得
+        const inputs = document.querySelectorAll('.card-cost-input');
+        playerDeck = Array.from(inputs).map(input => Number(input.value));
+        
+        // CPUのデッキを生成
+        cpuDeck = generateCPUDeck();
+
+        // バトルのステータスを初期化
+        playerWins = 0;
+        cpuWins = 0;
+        turnCount = 0;
+        updateScoreBoard();
+        document.getElementById('battle-log').innerText = "カードを選んでください";
+        document.getElementById('btn-next-turn').style.display = 'none';
+        document.getElementById('btn-return-home').style.display = 'none';
+
+        renderHands();
+        showScreen('screen-battle');
+    }
+
+    function renderHands() {
+        const playerHandEl = document.getElementById('player-hand');
+        const cpuHandEl = document.getElementById('cpu-hand');
+        playerHandEl.innerHTML = '';
+        cpuHandEl.innerHTML = '';
+
+        // プレイヤーの手札描画
+        playerDeck.forEach((power, index) => {
+            if (power !== null) {
+                playerHandEl.innerHTML += `<div class="card" onclick="playCard(${index})">${power}</div>`;
+            } else {
+                playerHandEl.innerHTML += `<div class="card used"></div>`;
+            }
+        });
+
+        // CPUの手札描画 (裏向き)
+        cpuDeck.forEach((power, index) => {
+            if (power !== null) {
+                cpuHandEl.innerHTML += `<div class="card cpu-card">?</div>`;
+            } else {
+                cpuHandEl.innerHTML += `<div class="card used"></div>`;
+            }
+        });
+    }
+
+    function playCard(playerCardIndex) {
+        // すでにターン進行中なら無効化
+        if (document.getElementById('btn-next-turn').style.display === 'block' || 
+            document.getElementById('btn-return-home').style.display === 'block') {
+            return;
+        }
+
+        const playerPower = playerDeck[playerCardIndex];
+        
+        // CPUのカードをランダムに選ぶ
+        const availableCpuIndices = cpuDeck.map((p, i) => p !== null ? i : -1).filter(i => i !== -1);
+        const cpuCardIndex = availableCpuIndices[Math.floor(Math.random() * availableCpuIndices.length)];
+        const cpuPower = cpuDeck[cpuCardIndex];
+
+        // カードを消費状態にする
+        playerDeck[playerCardIndex] = null;
+        cpuDeck[cpuCardIndex] = null;
+
+        // 手札を再描画して、出したカードを中央のログに表示する
+        renderHands();
+        
+        let resultMsg = `あなた[${playerPower}] vs CPU[${cpuPower}] ➔ `;
+        
+        // 勝敗判定
+        if (playerPower > cpuPower) {
+            playerWins++;
+            resultMsg += "あなたの勝ち！";
+        } else if (playerPower < cpuPower) {
+            cpuWins++;
+            resultMsg += "CPUの勝ち...";
+        } else {
+            resultMsg += "引き分け！";
+        }
+
+        document.getElementById('battle-log').innerText = resultMsg;
+        updateScoreBoard();
+        turnCount++;
+
+        checkGameEnd();
+    }
+
+    function updateScoreBoard() {
+        document.getElementById('score-player').innerText = playerWins;
+        document.getElementById('score-cpu').innerText = cpuWins;
+    }
+
+    function checkGameEnd() {
+        const logEl = document.getElementById('battle-log');
+        const returnBtn = document.getElementById('btn-return-home');
+        const nextBtn = document.getElementById('btn-next-turn');
+
+        if (playerWins >= WIN_CONDITION) {
+            logEl.innerText += " 🎉 最終結果: あなたの勝利！ 🎉";
+            returnBtn.style.display = 'block';
+        } else if (cpuWins >= WIN_CONDITION) {
+            logEl.innerText += " 💀 最終結果: CPUの勝利... 💀";
+            returnBtn.style.display = 'block';
+        } else if (turnCount >= 5) {
+            // 5枚使い切っても決着がつかない場合
+            if(playerWins > cpuWins) {
+                logEl.innerText += " 🎉 ターン切れ判定: あなたの勝利！ 🎉";
+            } else if (playerWins < cpuWins) {
+                logEl.innerText += " 💀 ターン切れ判定: CPUの勝利... 💀";
+            } else {
+                logEl.innerText += " 🤝 ターン切れ判定: 完全な引き分け！ 🤝";
+            }
+            returnBtn.style.display = 'block';
+        } else {
+            // まだ続く場合
+            nextBtn.style.display = 'block';
+        }
+    }
+
+    function nextTurn() {
+        document.getElementById('battle-log').innerText = "カードを選んでください";
+        document.getElementById('btn-next-turn').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
