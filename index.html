@@ -55,7 +55,8 @@
            1. ホーム画面用スタイル
            ========================================= */
         #screen-home {
-            background-image: url('casino_counter01.png');
+            background-image: url('casino_counter01.png'); /* 画像がない場合は背景色になります */
+            background-color: #2c3e50; /* フォールバック用の背景色 */
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -111,7 +112,7 @@
             width: 100%;
             overflow: hidden;
         }
-        /* ★ 丸枠の指定を消し、領域いっぱいに広がるように修正 ★ */
+        /* アバターを絵文字で大きく表示するためのスタイル */
         .avatar-icon {
             width: 100%;
             height: 100%;
@@ -120,15 +121,8 @@
             justify-content: center;
             align-items: center;
             margin-bottom: 15px;
-        }
-        .avatar-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center bottom;
-            /* 下部を透過させるグラデーションマスク */
-            -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-            mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+            font-size: 150px; /* 絵文字サイズ */
+            text-shadow: 0px 4px 15px rgba(0,0,0,0.8);
         }
         #gacha-result {
             background: rgba(0, 0, 0, 0.75); color: #fff; padding: 8px 18px;
@@ -137,6 +131,8 @@
         }
         .gacha-btn { background: linear-gradient(145deg, #d4af37, #aa8c2c); color: #111; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.6); }
         .gacha-btn:hover { background: linear-gradient(145deg, #e5c158, #b89832); }
+        .change-avatar-btn { background: linear-gradient(145deg, #9b59b6, #8e44ad); color: white; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.6); }
+        .change-avatar-btn:hover { background: linear-gradient(145deg, #8e44ad, #732d91); }
         .battle-btn { background: linear-gradient(145deg, #8b0000, #5c0000); color: #f1c40f; border: 2px solid #d4af37; box-shadow: 0 4px 10px rgba(0,0,0,0.6); text-shadow: 1px 1px 3px rgba(0,0,0,0.9); font-size: 18px; }
         .battle-btn:hover { background: linear-gradient(145deg, #a52a2a, #7a0000); }
 
@@ -170,6 +166,23 @@
         
         .battle-log { text-align: center; font-weight: bold; font-size: 16px; margin: 10px 0; min-height: 48px; color: #d35400; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .win-text { color: #27ae60; font-size: 18px; margin-top: 4px;}
+        
+        /* アバター一覧用スタイル */
+        .avatar-grid-item {
+            font-size: 40px;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #2c3e50;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .avatar-grid-item:hover { transform: scale(1.1); }
+        .avatar-grid-item.selected { border: 2px solid #f1c40f; background: #34495e; }
     </style>
 </head>
 <body>
@@ -178,7 +191,18 @@
 
     <!-- キャラクターガチャ演出用オーバーレイ -->
     <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.8); justify-content:center; align-items:center;" onclick="closeCharacter()">
-        <img src="ChatGPT Image 2026年6月27日 00_01_12.png" style="width:90%; height:auto; animation: fadeIn 0.5s;">
+        <!-- ガチャ結果の絵文字を表示するように変更 -->
+        <div id="gacha-result-avatar" style="font-size: 180px; animation: fadeIn 0.5s;"></div>
+    </div>
+
+    <!-- アバター変更一覧用オーバーレイ -->
+    <div id="avatar-list-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:90; background:rgba(0,0,0,0.95); flex-direction:column; padding:20px; box-sizing:border-box;">
+        <h2 style="color:#f1c40f; text-align:center; margin-top:10px;">アバターを変更</h2>
+        <p style="text-align: center; color: #bdc3c7; margin-bottom: 20px;">所持しているアバターをタップして選択</p>
+        <div id="avatar-grid" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; overflow-y:auto; flex-grow:1; align-content: flex-start;">
+            <!-- ここにアバター一覧が動的に生成されます -->
+        </div>
+        <button onclick="closeAvatarList()" style="margin-top:20px; background-color:#7f8c8d;">閉じる</button>
     </div>
 
     <!-- 1. ホーム画面 -->
@@ -196,14 +220,13 @@
             </div>
         </div>
         <div class="avatar-area">
-            <!-- ★ インラインスタイルの丸枠設定を削除し、object-fitをcontainに変更 ★ -->
-            <div id="avatar-display" class="avatar-icon">
-    <img src="キャラ1.png">
-</div>
+            <!-- 絵文字でアバターを表示するように変更 -->
+            <div id="avatar-display" class="avatar-icon">🧑‍💻</div>
             <p id="gacha-result">カジノへようこそ！</p>
         </div>
         <div>
             <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 100コインでガチャを回す</button>
+            <button class="change-avatar-btn" style="width:100%;" onclick="openAvatarList()">👕 アバターを変更する</button>
             <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen()">⚔️ オフライン練習モード</button>
         </div>
     </div>
@@ -250,7 +273,10 @@
 <script>
     // データとステータス
     const avatars = ['🧑‍💻', '🧙‍♂️', '🥷', '🧛‍♀️', '🧟‍♂️', '🦸‍♂️', '🧝‍♀️', '🧞‍♂️', '🤖', '👽', '🦖', '🤵', '🎰', '🃏', '👑', '💰'];
-    let currentAvatar = '🧑‍💻';
+    
+    // アバター管理用の変数
+    let unlockedAvatars = ['🧑‍💻']; // 所持しているアバターリスト（初期値）
+    let currentAvatar = '🧑‍💻';       // 現在選択中のアバター
     let coins = 0; 
 
     let playerDeck = [];
@@ -276,6 +302,7 @@
 
     // ガチャ＆キャラクター表示ロジック
     function playGacha() {
+        // デバッグ用: if (coins < 0) { ... にするとすぐ回せます
         if (coins < 100) {
             alert("コインが足りません！バトルで勝利して100コイン貯めよう！");
             return;
@@ -283,16 +310,62 @@
         coins -= 100;
         updateCoinUI(); 
         
-        // オーバーレイを表示してキャラクター画像を出す
+        // ガチャ抽選処理
+        const randomIndex = Math.floor(Math.random() * avatars.length);
+        const newAvatar = avatars[randomIndex];
+
+        // 未所持の場合はリストに追加
+        if (!unlockedAvatars.includes(newAvatar)) {
+            unlockedAvatars.push(newAvatar);
+            document.getElementById('gacha-result').innerText = `✨ 新しいアバター「${newAvatar}」をゲット！`;
+        } else {
+            document.getElementById('gacha-result').innerText = `✨ 「${newAvatar}」が出た！（すでに持っています）`;
+        }
+
+        // オーバーレイに引いたアバターを表示して演出
+        document.getElementById('gacha-result-avatar').innerText = newAvatar;
         document.getElementById('character-overlay').style.display = 'flex';
-        document.getElementById('gacha-result').innerText = `✨ 新しい仲間をゲット！`;
     }
 
     function closeCharacter() {
         document.getElementById('character-overlay').style.display = 'none';
     }
 
+    // =========================================
+    // アバター変更・一覧ロジック
+    // =========================================
+    function openAvatarList() {
+        const grid = document.getElementById('avatar-grid');
+        grid.innerHTML = ''; // 一旦クリア
+
+        // 獲得済みのアバターをボタンとして追加
+        unlockedAvatars.forEach(avatar => {
+            const item = document.createElement('div');
+            item.className = 'avatar-grid-item';
+            if (avatar === currentAvatar) {
+                item.classList.add('selected'); // 現在のアバターを目立たせる
+            }
+            item.innerText = avatar;
+            item.onclick = () => selectAvatar(avatar);
+            grid.appendChild(item);
+        });
+
+        document.getElementById('avatar-list-overlay').style.display = 'flex';
+    }
+
+    function selectAvatar(avatar) {
+        currentAvatar = avatar;
+        document.getElementById('avatar-display').innerText = currentAvatar; // ホーム画面更新
+        closeAvatarList();
+    }
+
+    function closeAvatarList() {
+        document.getElementById('avatar-list-overlay').style.display = 'none';
+    }
+
+    // =========================================
     // バトル関連ロジック
+    // =========================================
     function goToBuildScreen() {
         showScreen('screen-build');
         renderCardInputs();
@@ -452,16 +525,16 @@
         const nextBtn = document.getElementById('btn-next-turn');
 
         if (playerWins >= 3) {
-            coins += 10;
-            logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 10コイン獲得！ 🎉</div>`;
+            coins += 100; // テストしやすくするため勝利報酬を100にしました
+            logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 100コイン獲得！ 🎉</div>`;
             returnBtn.style.display = 'block';
         } else if (cpuWins >= 3) {
             logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 MATCH LOSE... 💀</div>`;
             returnBtn.style.display = 'block';
         } else if (turnCount >= 5) {
             if(playerWins > cpuWins) {
-                coins += 10;
-                logEl.innerHTML += `<div class="win-text">🎉 判定勝ち！ 10コイン獲得！ 🎉</div>`;
+                coins += 100;
+                logEl.innerHTML += `<div class="win-text">🎉 判定勝ち！ 100コイン獲得！ 🎉</div>`;
             }
             else if (playerWins < cpuWins) {
                 logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 判定負け... 💀</div>`;
@@ -483,6 +556,8 @@
     }
     
     // 起動時の初期化
+    // 初期アバターの表示をセット
+    document.getElementById('avatar-display').innerText = currentAvatar;
     updateCoinUI();
 </script>
 </body>
