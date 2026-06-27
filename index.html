@@ -108,7 +108,10 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            width: 100%;
+            overflow: hidden;
         }
+        /* ★ 丸枠の指定を消し、領域いっぱいに広がるように修正 ★ */
         .avatar-icon {
             width: 100%;
             height: 100%;
@@ -121,6 +124,7 @@
         #gacha-result {
             background: rgba(0, 0, 0, 0.75); color: #fff; padding: 8px 18px;
             border-radius: 20px; font-size: 14px; border: 1px solid #d4af37; font-weight: bold;
+            z-index: 10;
         }
         .gacha-btn { background: linear-gradient(145deg, #d4af37, #aa8c2c); color: #111; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.6); }
         .gacha-btn:hover { background: linear-gradient(145deg, #e5c158, #b89832); }
@@ -183,7 +187,7 @@
             </div>
         </div>
         <div class="avatar-area">
-            <!-- 丸枠スタイルを削除し、画像の表示方法をcontainに変更 -->
+            <!-- ★ インラインスタイルの丸枠設定を削除し、object-fitをcontainに変更 ★ -->
             <div id="avatar-display" class="avatar-icon">
                 <img src="キャラ1.png" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom;">
             </div>
