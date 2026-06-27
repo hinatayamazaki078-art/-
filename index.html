@@ -324,12 +324,13 @@
 
 <script>
     // データとステータス
-    const avatars = ['🧑‍💻', '🧙‍♂️', '🥷', '🧛‍♀️', '🧟‍♂️', '🦸‍♂️', '🧝‍♀️', '🧞‍♂️', '🤖', '👽', '🦖', '🤵', '🎰', '🃏', '👑', '💰'];
+    const avatars = ['キャラ1.png', 'キャラ2.png', '🧙‍♂️', '🥷', '🧛‍♀️', '🧟‍♂️', '🦸‍♂️', '🧝‍♀️', '🧞‍♂️', '🤖', '👽', '🦖', '🤵', '🎰', '🃏', '👑', '💰'];
     const betAmounts = [10, 30, 50, 100, 300, 500, 1000, 3000, 10000, 50000, 100000, 500000, 1000000];
     const npcNames = ['サトシ', 'カスミ', 'タケシ', 'シゲル', 'キバナ', 'ダンデ', 'シロナ', 'ワタル', 'ダイゴ', 'ヒカリ'];
 
-    let unlockedAvatars = ['🧑‍💻']; 
-    let currentAvatar = '🧑‍💻';       
+    // 最初から2つのキャラを持たせておきます
+    let unlockedAvatars = ['キャラ1.png', 'キャラ2.png']; 
+    let currentAvatar = 'キャラ1.png';       
     let coins = 100; // 初期所持金を100に変更（テスト用）
 
     // オンラインバトル関連の管理状態
@@ -385,7 +386,12 @@
             document.getElementById('gacha-result').innerText = `✨ 「${newAvatar}」が出た！（すでに持っています）`;
         }
 
-        document.getElementById('gacha-result-avatar').innerText = newAvatar;
+        const resultAvatarDiv = document.getElementById('gacha-result-avatar');
+        if (newAvatar.includes('.png')) {
+            resultAvatarDiv.innerHTML = `<img src="${newAvatar}" style="height: 180px; object-fit: contain;">`;
+        } else {
+            resultAvatarDiv.innerText = newAvatar;
+        }
         document.getElementById('character-overlay').style.display = 'flex';
     }
 
@@ -404,7 +410,14 @@
             if (avatar === currentAvatar) {
                 item.classList.add('selected');
             }
-            item.innerText = avatar;
+            
+            // ▼ 画像ならimgタグ、絵文字ならテキストとして表示する ▼
+            if (avatar.includes('.png')) {
+                item.innerHTML = `<img src="${avatar}" style="width: 90%; height: 90%; object-fit: contain; border-radius: 8px;">`;
+            } else {
+                item.innerText = avatar;
+            }
+
             item.onclick = () => selectAvatar(avatar);
             grid.appendChild(item);
         });
@@ -414,10 +427,19 @@
 
     function selectAvatar(avatar) {
         currentAvatar = avatar;
-        // document.getElementById('avatar-display').innerText = currentAvatar; 
+        
+        // ▼ 選択したアバターをホーム画面に反映させる ▼
+        const displayDiv = document.getElementById('avatar-display');
+        if (avatar.includes('.png')) {
+            // 画像の場合は、先ほど設定した1.1倍のサイズで表示
+            displayDiv.innerHTML = `<img src="${avatar}" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom; transform: scale(1.1); transform-origin: center bottom;">`;
+        } else {
+            // 絵文字の場合は大きいテキストとして表示
+            displayDiv.innerHTML = `<div style="font-size: 150px; display:flex; justify-content:center; align-items:center; height:100%; text-shadow: 0px 4px 15px rgba(0,0,0,0.8);">${avatar}</div>`;
+        }
+
         closeAvatarList();
     }
-
     function closeAvatarList() {
         document.getElementById('avatar-list-overlay').style.display = 'none';
     }
