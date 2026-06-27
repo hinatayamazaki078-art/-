@@ -451,25 +451,9 @@
         document.getElementById('btn-lobby-challenge').disabled = false;
     }
 
-    // 他プレイヤー(NPC)のエントリー状況を自動生成する
+    // NPC生成機能を削除（本来はここでサーバーから実際のプレイヤーリストを取得します）
     function generateNPCSeats() {
         lobbySeats = [];
-        
-        // 1. 自分が選択した掛金と同じ額のNPCの席を必ず1〜2個作成
-        const identicalCount = Math.floor(Math.random() * 2) + 1;
-        for(let i=0; i<identicalCount; i++) {
-            const name = npcNames[Math.floor(Math.random() * npcNames.length)];
-            lobbySeats.push({ id: 'npc_' + Math.random(), name: '🤖 ' + name, bet: currentBet, isNPC: true });
-        }
-
-        // 2. その他の掛金のNPCの席をランダムにばら撒く
-        for (let i = 0; i < 4; i++) {
-            const name = npcNames[Math.floor(Math.random() * npcNames.length)];
-            const randomBet = betAmounts[Math.floor(Math.random() * betAmounts.length)];
-            if(randomBet !== currentBet) {
-                lobbySeats.push({ id: 'npc_' + Math.random(), name: '🤖 ' + name, bet: randomBet, isNPC: true });
-            }
-        }
     }
 
     function handleLobbyAction(mode) {
@@ -478,7 +462,8 @@
             return;
         }
 
-        generateNPCSeats(); // ロビー一覧の初期化
+        // ロビー一覧の初期化（サーバー連携時はここでデータをフェッチします）
+        generateNPCSeats(); 
 
         if (mode === 'entry') {
             // エントリー：掛金を先に支払い、自分の席を一覧に掲載
@@ -492,20 +477,16 @@
             renderLobbyList();
             showScreen('screen-lobby');
 
-            // 擬似的に挑戦者を待つ案内を表示
-            document.getElementById('btn-lobby-back').style.display = 'none'; // マッチング中は戻れない
+            // 挑戦者を待つ案内を表示
+            document.getElementById('btn-lobby-back').style.display = 'block'; // 待ち状態でも戻れるように変更
             const notice = document.createElement('div');
             notice.style.cssText = 'text-align:center; color:#e74c3c; font-weight:bold; margin-bottom:10px; animation: fadeIn 0.5s infinite alternate;';
             notice.innerText = '⏳ 他のプレイヤーからの挑戦を待っています...';
             document.getElementById('lobby-list-container').prepend(notice);
 
-            // 2.5秒後に擬似的にNPCが挑戦してくる
-            matchingTimeout = setTimeout(() => {
-                const enemyName = npcNames[Math.floor(Math.random() * npcNames.length)];
-                alert(`⚔️ マッチング成立！\n🤖 ${enemyName} があなたの席に挑戦してきました！`);
-                document.getElementById('btn-lobby-back').style.display = 'block';
-                goToBuildScreen(true);
-            }, 2500);
+            // ==========================================
+            // 【変更点】NPCが2.5秒後に乱入してくる処理を削除しました
+            // ==========================================
 
         } else if (mode === 'challenge') {
             // 挑戦：ロビーのエントリー一覧へ進み、そこから席を選べるようにする
@@ -514,7 +495,6 @@
             document.getElementById('btn-lobby-back').style.display = 'block';
         }
     }
-
     function renderLobbyList() {
         const container = document.getElementById('lobby-list-container');
         container.innerHTML = '';
