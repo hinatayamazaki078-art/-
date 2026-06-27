@@ -258,11 +258,11 @@
 
     // ガチャ＆キャラクター表示ロジック
     function playGacha() {
-        if (coins < 100) {
+        if (coins < 10) {
             alert("コインが足りません！バトルで勝利して100コイン貯めよう！");
             return;
         }
-        coins -= 100;
+        coins -= 10;
         updateCoinUI(); 
         
         // オーバーレイを表示してキャラクター画像を出す
