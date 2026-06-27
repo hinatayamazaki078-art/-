@@ -55,8 +55,8 @@
            1. ホーム画面用スタイル
            ========================================= */
         #screen-home {
-            background-image: url('casino_counter01.png'); /* 画像がない場合は背景色になります */
-            background-color: #2c3e50; /* フォールバック用の背景色 */
+            background-image: url('casino_counter01.png');
+            background-color: #2c3e50;
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -112,7 +112,6 @@
             width: 100%;
             overflow: hidden;
         }
-        /* アバターを絵文字で大きく表示するためのスタイル */
         .avatar-icon {
             width: 100%;
             height: 100%;
@@ -121,7 +120,7 @@
             justify-content: center;
             align-items: center;
             margin-bottom: 15px;
-            font-size: 150px; /* 絵文字サイズ */
+            font-size: 150px;
             text-shadow: 0px 4px 15px rgba(0,0,0,0.8);
         }
         #gacha-result {
@@ -135,6 +134,44 @@
         .change-avatar-btn:hover { background: linear-gradient(145deg, #8e44ad, #732d91); }
         .battle-btn { background: linear-gradient(145deg, #8b0000, #5c0000); color: #f1c40f; border: 2px solid #d4af37; box-shadow: 0 4px 10px rgba(0,0,0,0.6); text-shadow: 1px 1px 3px rgba(0,0,0,0.9); font-size: 18px; }
         .battle-btn:hover { background: linear-gradient(145deg, #a52a2a, #7a0000); }
+
+        /* =========================================
+           新規追加：掛金選択・ロビー用スタイル
+           ========================================= */
+        .bet-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+            overflow-y: auto;
+            max-height: 260px;
+            padding: 4px;
+        }
+        .bet-btn {
+            padding: 12px 5px;
+            background-color: white;
+            color: #333;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0;
+        }
+        .bet-btn:hover { background-color: #f1f2f6; transform: translateY(-2px); }
+        .bet-btn.selected { background-color: #f1c40f; border-color: #d4af37; color: #111; box-shadow: 0 0 8px rgba(241,196,15,0.5); }
+        .bet-btn:disabled { background-color: #e2e2e2; color: #95a5a6; border-color: #d2d2d2; cursor: not-allowed; transform: none; box-shadow: none; }
+        .action-area { display: flex; gap: 10px; margin-top: 10px; }
+        .action-area button { flex: 1; }
+        
+        .lobby-list { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding: 4px; }
+        .lobby-item { background: white; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); animation: fadeIn 0.3s; }
+        .lobby-item-info { display: flex; flex-direction: column; gap: 4px; }
+        .lobby-item-name { font-weight: bold; color: #2c3e50; }
+        .lobby-item-bet { color: #f1c40f; font-weight: bold; background: #1a1a1a; padding: 2px 8px; border-radius: 12px; font-size: 12px; width: fit-content; text-align: center; }
+        .lobby-join-btn { padding: 8px 14px; font-size: 13px; background: linear-gradient(145deg, #e74c3c, #c0392b); color: white; border-radius: 6px; margin-bottom: 0; }
+        .lobby-join-btn:disabled { background: #95a5a6; }
 
         /* キャラクター表示アニメーション */
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -168,19 +205,7 @@
         .win-text { color: #27ae60; font-size: 18px; margin-top: 4px;}
         
         /* アバター一覧用スタイル */
-        .avatar-grid-item {
-            font-size: 40px;
-            width: 70px;
-            height: 70px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #2c3e50;
-            border-radius: 12px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-        }
+        .avatar-grid-item { font-size: 40px; width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; background: #2c3e50; border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
         .avatar-grid-item:hover { transform: scale(1.1); }
         .avatar-grid-item.selected { border: 2px solid #f1c40f; background: #34495e; }
     </style>
@@ -189,49 +214,62 @@
 
 <div id="app-container">
 
-    <!-- キャラクターガチャ演出用オーバーレイ -->
     <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.8); justify-content:center; align-items:center;" onclick="closeCharacter()">
-        <!-- ガチャ結果の絵文字を表示するように変更 -->
         <div id="gacha-result-avatar" style="font-size: 180px; animation: fadeIn 0.5s;"></div>
     </div>
 
-    <!-- アバター変更一覧用オーバーレイ -->
     <div id="avatar-list-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:90; background:rgba(0,0,0,0.95); flex-direction:column; padding:20px; box-sizing:border-box;">
         <h2 style="color:#f1c40f; text-align:center; margin-top:10px;">アバターを変更</h2>
         <p style="text-align: center; color: #bdc3c7; margin-bottom: 20px;">所持しているアバターをタップして選択</p>
-        <div id="avatar-grid" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; overflow-y:auto; flex-grow:1; align-content: flex-start;">
-            <!-- ここにアバター一覧が動的に生成されます -->
-        </div>
+        <div id="avatar-grid" style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; overflow-y:auto; flex-grow:1; align-content: flex-start;"></div>
         <button onclick="closeAvatarList()" style="margin-top:20px; background-color:#7f8c8d;">閉じる</button>
     </div>
 
-    <!-- 1. ホーム画面 -->
     <div id="screen-home" class="screen active">
         <div class="header-status">
             <div class="header-left">
                 <span id="player-name">👑 ゲスト</span>
                 <span id="player-level">Lv: 1</span>
             </div>
-            <!-- ソシャゲ風コインUI -->
             <div class="coin-display">
                 <span class="coin-icon">🪙</span>
                 <span id="player-coins">0</span>
-                <div class="coin-plus-btn">＋</div>
+                <div class="coin-plus-btn" onclick="addCoins()">＋</div>
             </div>
         </div>
         <div class="avatar-area">
-            <!-- 絵文字でアバターを表示するように変更 -->
             <div id="avatar-display" class="avatar-icon">🧑‍💻</div>
             <p id="gacha-result">カジノへようこそ！</p>
         </div>
         <div>
             <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 100コインでガチャを回す</button>
             <button class="change-avatar-btn" style="width:100%;" onclick="openAvatarList()">👕 アバターを変更する</button>
-            <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen()">⚔️ オフライン練習モード</button>
+            <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22;" onclick="goToBetSelectScreen()">🪑 席を探す (オンライン)</button>
+            <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen(false)">⚔️ オフライン練習モード</button>
         </div>
     </div>
 
-    <!-- 2. デッキ構築画面 -->
+    <div id="screen-bet-select" class="screen">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">掛金選択</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">バトルに賭けるコインを選択してください。</p>
+        <div class="bet-grid" id="bet-buttons-container"></div>
+        <div style="text-align: center; font-weight: bold; margin-bottom: 15px; color: #2c3e50;">
+            選択中の掛金: <span id="selected-bet-display" style="color: #d35400; font-size: 20px;">未選択</span> コイン
+        </div>
+        <div class="action-area">
+            <button id="btn-lobby-entry" class="gacha-btn" style="background: linear-gradient(145deg, #2ecc71, #27ae60); color:white;" disabled onclick="handleLobbyAction('entry')">🚪 エントリー</button>
+            <button id="btn-lobby-challenge" class="battle-btn" style="background: linear-gradient(145deg, #e74c3c, #c0392b); color:white; border-color:#e74c3c;" disabled onclick="handleLobbyAction('challenge')">⚔️ 挑戦する</button>
+        </div>
+        <button style="background-color: #7f8c8d; margin-top: 10px;" onclick="goToHome()">🏠 ホームに戻る</button>
+    </div>
+
+    <div id="screen-lobby" class="screen">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">エントリー一覧</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">席を選んで挑戦、または他プレイヤーの参入を待ちます。</p>
+        <div class="lobby-list" id="lobby-list-container"></div>
+        <button id="btn-lobby-back" style="background-color: #7f8c8d;" onclick="goToBetSelectScreen()">⬅️ 掛金選択に戻る</button>
+    </div>
+
     <div id="screen-build" class="screen">
         <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">カードコスト振り分け</h2>
         <p style="text-align: center; color: #7f8c8d; margin-bottom: 5px;">コスト合計20を5枚に割り振ってください。</p>
@@ -241,7 +279,6 @@
         <button style="background-color: #7f8c8d;" onclick="goToHome()">🏠 ホームに戻る</button>
     </div>
 
-    <!-- 3. バトル画面 -->
     <div id="screen-battle" class="screen">
         <div class="score-board">
             Player <span id="score-player" style="color:#2980b9;">0</span> - <span id="score-cpu" style="color:#c0392b;">0</span> CPU (3勝先取)
@@ -269,15 +306,21 @@
 
 </div>
 
-<!-- プログラム部分はすべてここにまとめる -->
 <script>
     // データとステータス
     const avatars = ['🧑‍💻', '🧙‍♂️', '🥷', '🧛‍♀️', '🧟‍♂️', '🦸‍♂️', '🧝‍♀️', '🧞‍♂️', '🤖', '👽', '🦖', '🤵', '🎰', '🃏', '👑', '💰'];
-    
-    // アバター管理用の変数
-    let unlockedAvatars = ['🧑‍💻']; // 所持しているアバターリスト（初期値）
-    let currentAvatar = '🧑‍💻';       // 現在選択中のアバター
-    let coins = 0; 
+    const betAmounts = [10, 30, 50, 100, 300, 500, 1000, 3000, 10000, 50000, 100000, 500000, 1000000];
+    const npcNames = ['サトシ', 'カスミ', 'タケシ', 'シゲル', 'キバナ', 'ダンデ', 'シロナ', 'ワタル', 'ダイゴ', 'ヒカリ'];
+
+    let unlockedAvatars = ['🧑‍💻']; 
+    let currentAvatar = '🧑‍💻';       
+    let coins = 100; // 初期所持金を100に変更（テスト用）
+
+    // オンラインバトル関連の管理状態
+    let currentBet = 0;           // 選択中/勝負中の掛金
+    let isOnlineBattle = false;   // オンライン戦（掛金戦）かどうかのフラグ
+    let lobbySeats = [];          // ロビーの席一覧
+    let matchingTimeout = null;   // エントリー時の擬似マッチング用タイマー
 
     let playerDeck = [];
     let cpuDeck = [];
@@ -286,8 +329,14 @@
     let turnCount = 0;
     let isProcessingTurn = false;
 
+    // コインを増やす機能（テスト用に＋ボタンへ追加）
+    function addCoins() {
+        coins += 10000;
+        updateCoinUI();
+    }
+
     function updateCoinUI() {
-        document.getElementById('player-coins').innerText = coins;
+        document.getElementById('player-coins').innerText = coins.toLocaleString();
     }
 
     function showScreen(screenId) {
@@ -296,13 +345,13 @@
     }
 
     function goToHome() {
+        if (matchingTimeout) clearTimeout(matchingTimeout);
         showScreen('screen-home');
         updateCoinUI();
     }
 
     // ガチャ＆キャラクター表示ロジック
     function playGacha() {
-        // デバッグ用: if (coins < 0) { ... にするとすぐ回せます
         if (coins < 100) {
             alert("コインが足りません！バトルで勝利して100コイン貯めよう！");
             return;
@@ -310,11 +359,9 @@
         coins -= 100;
         updateCoinUI(); 
         
-        // ガチャ抽選処理
         const randomIndex = Math.floor(Math.random() * avatars.length);
         const newAvatar = avatars[randomIndex];
 
-        // 未所持の場合はリストに追加
         if (!unlockedAvatars.includes(newAvatar)) {
             unlockedAvatars.push(newAvatar);
             document.getElementById('gacha-result').innerText = `✨ 新しいアバター「${newAvatar}」をゲット！`;
@@ -322,7 +369,6 @@
             document.getElementById('gacha-result').innerText = `✨ 「${newAvatar}」が出た！（すでに持っています）`;
         }
 
-        // オーバーレイに引いたアバターを表示して演出
         document.getElementById('gacha-result-avatar').innerText = newAvatar;
         document.getElementById('character-overlay').style.display = 'flex';
     }
@@ -331,19 +377,16 @@
         document.getElementById('character-overlay').style.display = 'none';
     }
 
-    // =========================================
     // アバター変更・一覧ロジック
-    // =========================================
     function openAvatarList() {
         const grid = document.getElementById('avatar-grid');
-        grid.innerHTML = ''; // 一旦クリア
+        grid.innerHTML = ''; 
 
-        // 獲得済みのアバターをボタンとして追加
         unlockedAvatars.forEach(avatar => {
             const item = document.createElement('div');
             item.className = 'avatar-grid-item';
             if (avatar === currentAvatar) {
-                item.classList.add('selected'); // 現在のアバターを目立たせる
+                item.classList.add('selected');
             }
             item.innerText = avatar;
             item.onclick = () => selectAvatar(avatar);
@@ -355,7 +398,7 @@
 
     function selectAvatar(avatar) {
         currentAvatar = avatar;
-        document.getElementById('avatar-display').innerText = currentAvatar; // ホーム画面更新
+        document.getElementById('avatar-display').innerText = currentAvatar; 
         closeAvatarList();
     }
 
@@ -363,10 +406,153 @@
         document.getElementById('avatar-list-overlay').style.display = 'none';
     }
 
+
+    // =========================================
+    // 新規追加：掛金選択 & オンラインロビーロジック
+    // =========================================
+    function goToBetSelectScreen() {
+        if (matchingTimeout) clearTimeout(matchingTimeout);
+        currentBet = 0;
+        document.getElementById('selected-bet-display').innerText = '未選択';
+        document.getElementById('btn-lobby-entry').disabled = true;
+        document.getElementById('btn-lobby-challenge').disabled = true;
+        
+        renderBetButtons();
+        showScreen('screen-bet-select');
+    }
+
+    function renderBetButtons() {
+        const container = document.getElementById('bet-buttons-container');
+        container.innerHTML = '';
+        betAmounts.forEach(amount => {
+            const isInsufficient = coins < amount; // コイン不足なら選択不可
+            container.innerHTML += `
+                <button class="bet-btn" id="bet-btn-${amount}" ${isInsufficient ? 'disabled' : ''} onclick="selectBet(${amount})">
+                    🪙 ${amount.toLocaleString()}
+                </button>
+            `;
+        });
+    }
+
+    function selectBet(amount) {
+        currentBet = amount;
+        document.getElementById('selected-bet-display').innerText = amount.toLocaleString();
+        
+        document.querySelectorAll('.bet-btn').forEach(btn => btn.classList.remove('selected'));
+        document.getElementById(`bet-btn-${amount}`).classList.add('selected');
+        
+        document.getElementById('btn-lobby-entry').disabled = false;
+        document.getElementById('btn-lobby-challenge').disabled = false;
+    }
+
+    // 他プレイヤー(NPC)のエントリー状況を自動生成する
+    function generateNPCSeats() {
+        lobbySeats = [];
+        
+        // 1. 自分が選択した掛金と同じ額のNPCの席を必ず1〜2個作成
+        const identicalCount = Math.floor(Math.random() * 2) + 1;
+        for(let i=0; i<identicalCount; i++) {
+            const name = npcNames[Math.floor(Math.random() * npcNames.length)];
+            lobbySeats.push({ id: 'npc_' + Math.random(), name: '🤖 ' + name, bet: currentBet, isNPC: true });
+        }
+
+        // 2. その他の掛金のNPCの席をランダムにばら撒く
+        for (let i = 0; i < 4; i++) {
+            const name = npcNames[Math.floor(Math.random() * npcNames.length)];
+            const randomBet = betAmounts[Math.floor(Math.random() * betAmounts.length)];
+            if(randomBet !== currentBet) {
+                lobbySeats.push({ id: 'npc_' + Math.random(), name: '🤖 ' + name, bet: randomBet, isNPC: true });
+            }
+        }
+    }
+
+    function handleLobbyAction(mode) {
+        if (coins < currentBet) {
+            alert("コインが足りません！");
+            return;
+        }
+
+        generateNPCSeats(); // ロビー一覧の初期化
+
+        if (mode === 'entry') {
+            // エントリー：掛金を先に支払い、自分の席を一覧に掲載
+            coins -= currentBet;
+            updateCoinUI();
+            isOnlineBattle = true;
+
+            const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
+            lobbySeats.unshift({ id: 'player_entry', name: '👑 ' + pName + ' (あなた)', bet: currentBet, isNPC: false });
+
+            renderLobbyList();
+            showScreen('screen-lobby');
+
+            // 擬似的に挑戦者を待つ案内を表示
+            document.getElementById('btn-lobby-back').style.display = 'none'; // マッチング中は戻れない
+            const notice = document.createElement('div');
+            notice.style.cssText = 'text-align:center; color:#e74c3c; font-weight:bold; margin-bottom:10px; animation: fadeIn 0.5s infinite alternate;';
+            notice.innerText = '⏳ 他のプレイヤーからの挑戦を待っています...';
+            document.getElementById('lobby-list-container').prepend(notice);
+
+            // 2.5秒後に擬似的にNPCが挑戦してくる
+            matchingTimeout = setTimeout(() => {
+                const enemyName = npcNames[Math.floor(Math.random() * npcNames.length)];
+                alert(`⚔️ マッチング成立！\n🤖 ${enemyName} があなたの席に挑戦してきました！`);
+                document.getElementById('btn-lobby-back').style.display = 'block';
+                goToBuildScreen(true);
+            }, 2500);
+
+        } else if (mode === 'challenge') {
+            // 挑戦：ロビーのエントリー一覧へ進み、そこから席を選べるようにする
+            renderLobbyList();
+            showScreen('screen-lobby');
+            document.getElementById('btn-lobby-back').style.display = 'block';
+        }
+    }
+
+    function renderLobbyList() {
+        const container = document.getElementById('lobby-list-container');
+        container.innerHTML = '';
+
+        lobbySeats.forEach(seat => {
+            let actionHtml = '';
+            if (!seat.isNPC) {
+                actionHtml = '<span style="color:#27ae60; font-weight:bold; font-size:13px;">対戦待ち...</span>';
+            } else {
+                const canAfford = coins >= seat.bet;
+                actionHtml = `<button class="lobby-join-btn" ${canAfford ? '' : 'disabled'} onclick="challengeSeat('${seat.id}', ${seat.bet})">挑戦する</button>`;
+            }
+
+            container.innerHTML += `
+                <div class="lobby-item">
+                    <div class="lobby-item-info">
+                        <span class="lobby-item-name">${seat.name}</span>
+                        <span class="lobby-item-bet">🪙 ${seat.bet.toLocaleString()}</span>
+                    </div>
+                    <div>${actionHtml}</div>
+                </div>
+            `;
+        });
+    }
+
+    function challengeSeat(seatId, betAmount) {
+        if (coins < betAmount) {
+            alert("コイン不足のため挑戦できません！");
+            return;
+        }
+        if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
+            coins -= betAmount;
+            updateCoinUI();
+            currentBet = betAmount;
+            goToBuildScreen(true);
+        }
+    }
+
+
     // =========================================
     // バトル関連ロジック
     // =========================================
-    function goToBuildScreen() {
+    function goToBuildScreen(isOnline) {
+        isOnlineBattle = isOnline; // オンラインバトルフラグを設定
         showScreen('screen-build');
         renderCardInputs();
         updateCost();
@@ -519,30 +705,56 @@
         document.getElementById('score-cpu').innerText = cpuWins;
     }
 
+    // オンライン掛金戦の報酬ロジックを統合
     function checkGameEnd() {
         const logEl = document.getElementById('battle-log');
         const returnBtn = document.getElementById('btn-return-home');
         const nextBtn = document.getElementById('btn-next-turn');
 
+        let isEnded = false;
+        let isPlayerWin = false;
+        let isDraw = false;
+
         if (playerWins >= 3) {
-            coins += 100; // テストしやすくするため勝利報酬を100にしました
-            logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 100コイン獲得！ 🎉</div>`;
-            returnBtn.style.display = 'block';
+            isEnded = true;
+            isPlayerWin = true;
         } else if (cpuWins >= 3) {
-            logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 MATCH LOSE... 💀</div>`;
-            returnBtn.style.display = 'block';
+            isEnded = true;
+            isPlayerWin = false;
         } else if (turnCount >= 5) {
-            if(playerWins > cpuWins) {
-                coins += 100;
-                logEl.innerHTML += `<div class="win-text">🎉 判定勝ち！ 100コイン獲得！ 🎉</div>`;
-            }
-            else if (playerWins < cpuWins) {
-                logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 判定負け... 💀</div>`;
-            }
-            else {
-                logEl.innerHTML += `<div style="color:#7f8c8d; font-size:18px; margin-top:4px;">🤝 ドローゲーム！ 🤝</div>`;
-            }
+            isEnded = true;
+            if (playerWins > cpuWins) isPlayerWin = true;
+            else if (playerWins < cpuWins) isPlayerWin = false;
+            else isDraw = true;
+        }
+
+        if (isEnded) {
             returnBtn.style.display = 'block';
+            
+            if (isDraw) {
+                if (isOnlineBattle) {
+                    coins += currentBet; // 引き分けなら掛金を返還
+                    logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！掛金 ${currentBet.toLocaleString()}コイン が返還されました 🤝</div>`;
+                } else {
+                    logEl.innerHTML += `<div style="color:#7f8c8d; font-size:18px; margin-top:4px;">🤝 ドローゲーム！ 🤝</div>`;
+                }
+            } else if (isPlayerWin) {
+                if (isOnlineBattle) {
+                    const payout = currentBet * 2; // 勝てば倍獲得
+                    coins += payout;
+                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 掛金の倍 [ ${payout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+                } else {
+                    coins += 100;
+                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 100コイン獲得！ 🎉</div>`;
+                }
+            } else {
+                if (isOnlineBattle) {
+                    logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... 掛金没収 (払い戻し0) 💀</div>`;
+                } else {
+                    logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 MATCH LOSE... 💀</div>`;
+                }
+            }
+            isOnlineBattle = false; // フラグリセット
         } else {
             nextBtn.style.display = 'block';
         }
@@ -556,7 +768,6 @@
     }
     
     // 起動時の初期化
-    // 初期アバターの表示をセット
     document.getElementById('avatar-display').innerText = currentAvatar;
     updateCoinUI();
 </script>
