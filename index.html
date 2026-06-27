@@ -226,7 +226,8 @@
     </div>
 
     <div id="screen-home" class="screen active">
-        <div class="header-status">
+        <!-- 1. ヘッダー (ボタンなどの奥にいかないよう手前に配置) -->
+        <div class="header-status" style="position: relative; z-index: 10;">
             <div class="header-left">
                 <span id="player-name">👑 ゲスト</span>
                 <span id="player-level">Lv: 1</span>
@@ -237,13 +238,20 @@
                 <div class="coin-plus-btn" onclick="addCoins()">＋</div>
             </div>
         </div>
-        <div class="avatar-area">
-            <div id="avatar-display" class="avatar-icon">
-    <img src="キャラ1.png" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom;">
-</div>
+        
+        <!-- ▼ 2. アバターを背景として大きく表示 (ボタンの裏側になるよう設定) ▼ -->
+        <div id="avatar-display" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;">
+            <!-- transform: scale(1.3) で1.3倍に拡大！好きな数字に変えて大きさを調整できます -->
+            <img src="キャラ1.png" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom; transform: scale(1.3); transform-origin: center bottom;">
+        </div>
+
+        <!-- 3. ガチャ結果テキスト (空いたスペースの下の方に配置) -->
+        <div class="avatar-area" style="position: relative; z-index: 10; justify-content: flex-end; padding-bottom: 20px;">
             <p id="gacha-result">カジノへようこそ！</p>
         </div>
-        <div>
+
+        <!-- 4. ボタンエリア (手前に配置してクリックできるようにする) -->
+        <div style="position: relative; z-index: 10;">
             <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 100コインでガチャを回す</button>
             <button class="change-avatar-btn" style="width:100%;" onclick="openAvatarList()">👕 アバターを変更する</button>
             <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22;" onclick="goToBetSelectScreen()">🪑 席を探す (オンライン)</button>
