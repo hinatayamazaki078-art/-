@@ -121,6 +121,15 @@
             align-items: center;
             margin-bottom: 15px;
         }
+        .avatar-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center bottom;
+            /* 下部を透過させるグラデーションマスク */
+            -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+        }
         #gacha-result {
             background: rgba(0, 0, 0, 0.75); color: #fff; padding: 8px 18px;
             border-radius: 20px; font-size: 14px; border: 1px solid #d4af37; font-weight: bold;
@@ -189,8 +198,8 @@
         <div class="avatar-area">
             <!-- ★ インラインスタイルの丸枠設定を削除し、object-fitをcontainに変更 ★ -->
             <div id="avatar-display" class="avatar-icon">
-                <img src="キャラ1.png" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom;">
-            </div>
+    <img src="キャラ1.png">
+</div>
             <p id="gacha-result">カジノへようこそ！</p>
         </div>
         <div>
