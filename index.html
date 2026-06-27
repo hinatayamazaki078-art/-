@@ -285,6 +285,9 @@
         </div>
         
         <div class="battle-area">
+            <!-- 追加: CPUのアバター（上部） -->
+            <div style="text-align: center; font-size: 48px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">🤖</div>
+
             <div class="cpu-area">
                 <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">CPU HAND</h3>
                 <div id="cpu-hand" class="hand-cards"></div>
@@ -298,6 +301,9 @@
                 <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">YOUR HAND</h3>
                 <div id="player-hand" class="hand-cards"></div>
             </div>
+            
+            <!-- 追加: 自身のアバター（手前・下部） -->
+            <div id="battle-player-avatar" style="text-align: center; font-size: 48px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">🧑‍💻</div>
         </div>
         
         <button id="btn-next-turn" style="display:none; background-color: #27ae60;" onclick="nextTurn()">次のターンへ</button>
@@ -604,23 +610,17 @@
 
     function startBattle() {
         const inputs = document.querySelectorAll('.card-cost-input');
-        playerDeck = Array.from(inputs).map(input => Number(input.value));
-        cpuDeck = generateCPUDeck();
-
-        playerWins = 0;
-        cpuWins = 0;
-        turnCount = 0;
-        isProcessingTurn = false;
-        
-        updateScoreBoard();
+        // ... (中略) ...
         document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
         document.getElementById('btn-next-turn').style.display = 'none';
         document.getElementById('btn-return-home').style.display = 'none';
 
+        // ★追加: 選択中のアバターをバトル画面に反映させる
+        document.getElementById('battle-player-avatar').innerText = currentAvatar;
+
         renderHands();
         showScreen('screen-battle');
     }
-
     function renderHands() {
         const playerHandEl = document.getElementById('player-hand');
         const cpuHandEl = document.getElementById('cpu-hand');
