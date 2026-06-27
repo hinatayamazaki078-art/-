@@ -110,11 +110,13 @@
             align-items: center;
         }
         .avatar-icon {
-            font-size: 85px;
-            background: rgba(255, 255, 255, 0.9);
-            width: 140px; height: 140px; line-height: 140px;
-            border-radius: 50%; border: 4px solid #d4af37;
-            box-shadow: 0 0 25px rgba(212, 175, 55, 0.8); margin-bottom: 15px;
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
         }
         #gacha-result {
             background: rgba(0, 0, 0, 0.75); color: #fff; padding: 8px 18px;
@@ -181,9 +183,9 @@
             </div>
         </div>
         <div class="avatar-area">
-            <!-- ★ここを画像表示用に変更しています★ -->
-            <div id="avatar-display" class="avatar-icon" style="overflow: hidden; line-height: 0;">
-                <img src="キャラ1.png" style="width: 100%; height: 100%; object-fit: cover; object-position: center 10%;">
+            <!-- 丸枠スタイルを削除し、画像の表示方法をcontainに変更 -->
+            <div id="avatar-display" class="avatar-icon">
+                <img src="キャラ1.png" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom;">
             </div>
             <p id="gacha-result">カジノへようこそ！</p>
         </div>
