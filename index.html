@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>カジノ・カードバトル</title>
     <style>
-        /* ベーススタイル (スマホアプリ風レイアウト) */
+        /* ベーススタイル */
         body {
             margin: 0;
             padding: 0;
@@ -52,7 +52,7 @@
         button:disabled { background-color: #95a5a6; cursor: not-allowed; transform: none; }
 
         /* =========================================
-           1. ホーム画面用スタイル (カジノ背景＆ソシャゲUI)
+           1. ホーム画面用スタイル
            ========================================= */
         #screen-home {
             background-image: url('casino_counter01.png');
@@ -61,8 +61,7 @@
             background-repeat: no-repeat;
             justify-content: space-between;
         }
-        /* ステータスバー */
-        #screen-home .header-status {
+        .header-status {
             background: rgba(26, 18, 11, 0.85);
             border: 2px solid #d4af37;
             color: #e6c662;
@@ -80,8 +79,6 @@
             font-size: 14px;
             gap: 4px;
         }
-        
-        /* ★ ソシャゲ風 コイン表示UI ★ */
         .coin-display {
             display: flex;
             align-items: center;
@@ -94,28 +91,17 @@
             font-size: 16px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
         }
-        .coin-icon {
-            margin-right: 6px;
-            font-size: 18px;
-        }
+        .coin-icon { margin-right: 6px; font-size: 18px; }
         .coin-plus-btn {
             background: linear-gradient(145deg, #2ecc71, #27ae60);
             color: white;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-left: 10px;
-            font-size: 14px;
-            cursor: pointer;
-            border: 1px solid #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            width: 20px; height: 20px;
+            display: flex; justify-content: center; align-items: center;
+            margin-left: 10px; font-size: 14px; cursor: pointer;
+            border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
-
-        /* アバターエリア */
-        #screen-home .avatar-area {
+        .avatar-area {
             text-align: center;
             flex-grow: 1;
             display: flex;
@@ -123,181 +109,51 @@
             justify-content: center;
             align-items: center;
         }
-        #screen-home .avatar-icon {
+        .avatar-icon {
             font-size: 85px;
             background: rgba(255, 255, 255, 0.9);
-            width: 140px;
-            height: 140px;
-            line-height: 140px;
-            border-radius: 50%;
-            border: 4px solid #d4af37;
-            box-shadow: 0 0 25px rgba(212, 175, 55, 0.8);
-            margin-bottom: 15px;
+            width: 140px; height: 140px; line-height: 140px;
+            border-radius: 50%; border: 4px solid #d4af37;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.8); margin-bottom: 15px;
         }
         #gacha-result {
-            background: rgba(0, 0, 0, 0.75);
-            color: #fff;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 14px;
-            border: 1px solid #d4af37;
-            font-weight: bold;
+            background: rgba(0, 0, 0, 0.75); color: #fff; padding: 8px 18px;
+            border-radius: 20px; font-size: 14px; border: 1px solid #d4af37; font-weight: bold;
         }
-        /* ソシャゲ風豪華ボタン */
-        #screen-home .gacha-btn {
-            background: linear-gradient(145deg, #d4af37, #aa8c2c);
-            color: #111;
-            border: 2px solid #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
-        }
-        #screen-home .gacha-btn:hover { background: linear-gradient(145deg, #e5c158, #b89832); }
+        .gacha-btn { background: linear-gradient(145deg, #d4af37, #aa8c2c); color: #111; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.6); }
+        .gacha-btn:hover { background: linear-gradient(145deg, #e5c158, #b89832); }
+        .battle-btn { background: linear-gradient(145deg, #8b0000, #5c0000); color: #f1c40f; border: 2px solid #d4af37; box-shadow: 0 4px 10px rgba(0,0,0,0.6); text-shadow: 1px 1px 3px rgba(0,0,0,0.9); font-size: 18px; }
+        .battle-btn:hover { background: linear-gradient(145deg, #a52a2a, #7a0000); }
+
+        /* キャラクター表示アニメーション */
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        /* =========================================
+           2. デッキ構築＆3. バトル画面用スタイル
+           ========================================= */
+        .cost-counter { text-align: center; font-size: 26px; font-weight: bold; margin-bottom: 20px; }
+        .card-inputs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .card-input-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+        .card-input-row input { width: 65px; font-size: 20px; text-align: center; padding: 5px; border: 2px solid #bdc3c7; border-radius: 6px; }
         
-        #screen-home .battle-btn {
-            background: linear-gradient(145deg, #8b0000, #5c0000);
-            color: #f1c40f;
-            border: 2px solid #d4af37;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
-            font-size: 18px;
-        }
-        #screen-home .battle-btn:hover { background: linear-gradient(145deg, #a52a2a, #7a0000); }
-
-        /* =========================================
-           2. デッキ構築画面用スタイル
-           ========================================= */
-        .cost-counter {
-            text-align: center;
-            font-size: 26px;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .card-inputs {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .card-input-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: white;
-            padding: 12px 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-        }
-        .card-input-row input {
-            width: 65px;
-            font-size: 20px;
-            text-align: center;
-            padding: 5px;
-            border: 2px solid #bdc3c7;
-            border-radius: 6px;
-        }
-
-        /* =========================================
-           3. バトル画面用スタイル & 3Dフリップ
-           ========================================= */
         .battle-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .cpu-area, .player-area {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-        .score-board {
-            text-align: center;
-            font-size: 20px;
-            font-weight: bold;
-            margin: 10px 0;
-            color: #2c3e50;
-            background: #fff;
-            padding: 8px;
-            border-radius: 6px;
-        }
-        
+        .cpu-area, .player-area { background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .score-board { text-align: center; font-size: 20px; font-weight: bold; margin: 10px 0; color: #2c3e50; background: #fff; padding: 8px; border-radius: 6px; }
         .hand-cards { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: wrap;}
         
-        .card {
-            width: 55px;
-            height: 80px;
-            perspective: 1000px;
-            cursor: pointer;
-            position: relative;
-        }
+        .card { width: 55px; height: 80px; perspective: 1000px; cursor: pointer; position: relative; }
         .card.cpu-card { cursor: default; }
         .card.used { visibility: hidden; pointer-events: none; }
+        .card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
+        .card.is-flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 22px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.15); box-sizing: border-box; }
+        .card-front { background-color: #2980b9; color: white; transform: rotateY(180deg); border: 2px solid #1f618d; }
+        .cpu-area .card-front { background-color: #c0392b; border: 2px solid #922b21; }
+        .card-back { background-color: #34495e; color: #f1c40f; border: 2px solid #2c3e50; font-size: 24px; }
+        .cpu-area .card-back { background-color: #2c3e50; color: #e74c3c; }
+        .player-area .card:not(.used):hover .card-inner { transform: rotateY(180deg) translateY(-8px); }
         
-        .card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            text-align: center;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            transform-style: preserve-3d;
-        }
-        .card.is-flipped .card-inner {
-            transform: rotateY(180deg);
-        }
-        
-        .card-front, .card-back {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-            border-radius: 6px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 22px;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-            box-sizing: border-box;
-        }
-        
-        .card-front {
-            background-color: #2980b9;
-            color: white;
-            transform: rotateY(180deg);
-            border: 2px solid #1f618d;
-        }
-        .cpu-area .card-front {
-            background-color: #c0392b;
-            border: 2px solid #922b21;
-        }
-        
-        .card-back {
-            background-color: #34495e;
-            color: #f1c40f;
-            border: 2px solid #2c3e50;
-            font-size: 24px;
-        }
-        .cpu-area .card-back {
-            background-color: #2c3e50;
-            color: #e74c3c;
-        }
-
-        .player-area .card:not(.used):hover .card-inner {
-            transform: rotateY(180deg) translateY(-8px);
-        }
-        
-        .battle-log {
-            text-align: center;
-            font-weight: bold;
-            font-size: 16px;
-            margin: 10px 0;
-            min-height: 48px;
-            color: #d35400;
-            background: rgba(255,255,255,0.9);
-            padding: 8px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
+        .battle-log { text-align: center; font-weight: bold; font-size: 16px; margin: 10px 0; min-height: 48px; color: #d35400; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .win-text { color: #27ae60; font-size: 18px; margin-top: 4px;}
     </style>
 </head>
@@ -305,38 +161,78 @@
 
 <div id="app-container">
 
-    <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;" onclick="closeCharacter()">
-    <img src="ChatGPT Image 2026年6月27日 00_01_12.png" style="width:90%; height:auto; animation: fadeIn 0.5s;">
+    <!-- キャラクターガチャ演出用オーバーレイ -->
+    <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.8); justify-content:center; align-items:center;" onclick="closeCharacter()">
+        <img src="ChatGPT Image 2026年6月27日 00_01_12.png" style="width:90%; height:auto; animation: fadeIn 0.5s;">
+    </div>
+
+    <!-- 1. ホーム画面 -->
+    <div id="screen-home" class="screen active">
+        <div class="header-status">
+            <div class="header-left">
+                <span id="player-name">👑 ゲスト</span>
+                <span id="player-level">Lv: 1</span>
+            </div>
+            <!-- ソシャゲ風コインUI -->
+            <div class="coin-display">
+                <span class="coin-icon">🪙</span>
+                <span id="player-coins">0</span>
+                <div class="coin-plus-btn">＋</div>
+            </div>
+        </div>
+        <div class="avatar-area">
+            <div id="avatar-display" class="avatar-icon">🧑‍💻</div>
+            <p id="gacha-result">カジノへようこそ！</p>
+        </div>
+        <div>
+            <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 100コインでガチャを回す</button>
+            <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen()">⚔️ オフライン練習モード</button>
+        </div>
+    </div>
+
+    <!-- 2. デッキ構築画面 -->
+    <div id="screen-build" class="screen">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">カードコスト振り分け</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 5px;">コスト合計20を5枚に割り振ってください。</p>
+        <div class="cost-counter" id="cost-counter-div">残りコスト: <span id="remaining-cost">20</span></div>
+        <div class="card-inputs" id="card-inputs-container"></div>
+        <button id="btn-start-battle" disabled onclick="startBattle()">バトル開始！</button>
+        <button style="background-color: #7f8c8d;" onclick="goToHome()">🏠 ホームに戻る</button>
+    </div>
+
+    <!-- 3. バトル画面 -->
+    <div id="screen-battle" class="screen">
+        <div class="score-board">
+            Player <span id="score-player" style="color:#2980b9;">0</span> - <span id="score-cpu" style="color:#c0392b;">0</span> CPU (3勝先取)
+        </div>
+        
+        <div class="battle-area">
+            <div class="cpu-area">
+                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">CPU HAND</h3>
+                <div id="cpu-hand" class="hand-cards"></div>
+            </div>
+
+            <div class="battle-log" id="battle-log">
+                <span>カードを1枚選んでください</span>
+            </div>
+
+            <div class="player-area">
+                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">YOUR HAND</h3>
+                <div id="player-hand" class="hand-cards"></div>
+            </div>
+        </div>
+        
+        <button id="btn-next-turn" style="display:none; background-color: #27ae60;" onclick="nextTurn()">次のターンへ</button>
+        <button id="btn-return-home" style="display:none; background-color: #d35400;" onclick="goToHome()">🏠 ロビーに戻る</button>
+    </div>
+
 </div>
 
-<style>
-    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-</style>
-
+<!-- プログラム部分はすべてここにまとめる -->
 <script>
-    // 既存のplayGacha関数を以下に書き換え
-    function playGacha() {
-        if (coins < 100) {
-            alert("コインが足りません！");
-            return;
-        }
-        coins -= 100;
-        updateCoinUI();
-        
-        // キャラクターを表示
-        document.getElementById('character-overlay').style.display = 'flex';
-        document.getElementById('gacha-result').innerText = `✨ 新しい仲間をゲット！`;
-    }
-
-    function closeCharacter() {
-        document.getElementById('character-overlay').style.display = 'none';
-    }
-</script>
     // データとステータス
     const avatars = ['🧑‍💻', '🧙‍♂️', '🥷', '🧛‍♀️', '🧟‍♂️', '🦸‍♂️', '🧝‍♀️', '🧞‍♂️', '🤖', '👽', '🦖', '🤵', '🎰', '🃏', '👑', '💰'];
     let currentAvatar = '🧑‍💻';
-    
-    // ★ コイン変数を追加
     let coins = 0; 
 
     let playerDeck = [];
@@ -360,24 +256,25 @@
         updateCoinUI();
     }
 
+    // ガチャ＆キャラクター表示ロジック
     function playGacha() {
-    // 1. コインが足りるかチェック
-    if (coins < 100) {
-        alert("コインが足りません！バトルで勝利して100コイン貯めよう！");
-        return; // ここで処理を止める
+        if (coins < 100) {
+            alert("コインが足りません！バトルで勝利して100コイン貯めよう！");
+            return;
+        }
+        coins -= 100;
+        updateCoinUI(); 
+        
+        // オーバーレイを表示してキャラクター画像を出す
+        document.getElementById('character-overlay').style.display = 'flex';
+        document.getElementById('gacha-result').innerText = `✨ 新しい仲間をゲット！`;
     }
 
-    // 2. コインを消費
-    coins -= 100;
-    updateCoinUI(); // 画面の表示を更新
+    function closeCharacter() {
+        document.getElementById('character-overlay').style.display = 'none';
+    }
 
-    // 3. ガチャの演出（今はランダムアバターの変更のみ）
-    const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
-    currentAvatar = randomAvatar;
-    document.getElementById('avatar-display').innerText = currentAvatar;
-    document.getElementById('gacha-result').innerText = `✨ レアアバター [ ${currentAvatar} ] をゲット！`;
-}
-
+    // バトル関連ロジック
     function goToBuildScreen() {
         showScreen('screen-build');
         renderCardInputs();
@@ -536,7 +433,6 @@
         const returnBtn = document.getElementById('btn-return-home');
         const nextBtn = document.getElementById('btn-next-turn');
 
-        // ★ 勝利時に10コイン追加処理
         if (playerWins >= 3) {
             coins += 10;
             logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 10コイン獲得！ 🎉</div>`;
@@ -568,7 +464,7 @@
         renderHands();
     }
     
-    // 初期表示でUIをセット
+    // 起動時の初期化
     updateCoinUI();
 </script>
 </body>
