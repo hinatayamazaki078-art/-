@@ -501,7 +501,10 @@
 
         lobbySeats.forEach(seat => {
             let actionHtml = '';
-            if (!seat.isNPC) {
+            // 自分自身の席かどうかをID等で判定（ここでは 'player_entry' かどうかで判定）
+            const isSelf = seat.id === 'player_entry'; 
+
+            if (isSelf) {
                 actionHtml = '<span style="color:#27ae60; font-weight:bold; font-size:13px;">対戦待ち...</span>';
             } else {
                 const canAfford = coins >= seat.bet;
