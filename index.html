@@ -527,7 +527,19 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                 </div>
             `;
             
-            // ※次回、ここに「誰かが入ってきたかを監視する処理」を追加します！
+            // ▼▼ ここから追加 ▼▼
+            // ホスト用の部屋監視（誰かが入ってきたかチェック）
+            const roomRef = window.doc(window.db, "rooms", currentRoomId);
+            const unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
+                const data = docSnap.data();
+                // ステータスが playing（誰かが挑戦ボタンを押した）になったら
+                if (data && data.status === "playing") {
+                    console.log("挑戦者が現れました！");
+                    unsubscribeHost(); // 監視をストップする
+                    goToBuildScreen(true); // 自分（ホスト）もデッキ構築画面へ進む
+                }
+            });
+            // ▲▲ ここまで追加 ▲▲
 
         } catch (error) {
             console.error("部屋の作成に失敗:", error);
