@@ -460,31 +460,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         renderBetButtons();
         showScreen('screen-bet-select');
     }
-
-   let unsubscribe = null; // リスナー解除用
-
-function listenToLobby() {
-    // roomsコレクションの状態をリアルタイム監視
-    unsubscribe = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
-        lobbySeats = []; // 現在のリストをリセット
-        
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            // 待機中の部屋だけをリストに追加
-            if (data.status === "waiting") {
-                lobbySeats.push({
-                    id: doc.id, // FirestoreのドキュメントID
-                    name: data.hostName,
-                    bet: data.betAmount,
-                    isNPC: false
-                });
-            }
-        });
-        
-        // 画面を再描画
-        renderLobbyList();
-    });
-}
     
     function renderBetButtons() {
         const container = document.getElementById('bet-buttons-container');
