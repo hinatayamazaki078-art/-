@@ -340,6 +340,7 @@
     let matchingTimeout = null;   // エントリー時の擬似マッチング用タイマー
     let currentRoomId = null;       // 自分の部屋のID
 let unsubscribeLobby = null;    // ロビー監視の解除用関数
+    let isHost = false;             // ▼ 新規追加: 自分がホストかどうか
 
     let playerDeck = [];
     let cpuDeck = [];
@@ -501,6 +502,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         coins -= currentBet;
         updateCoinUI();
         isOnlineBattle = true;
+        isHost = true;
 
         const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
         
@@ -616,6 +618,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
         coins -= betAmount;
         updateCoinUI();
+        isHost = false;
         currentBet = betAmount;
 
         // 📝 変更点：対象の部屋のステータスを「対戦中」に更新（updateDoc）
@@ -685,31 +688,79 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         return deck;
     }
 
-    function startBattle() {
-        const inputs = document.querySelectorAll('.card-cost-input');
-        
-        // ▼▼ 「中略」で消えてしまっていた大事なプログラムを復活 ▼▼
-        playerDeck = [];
-        inputs.forEach(input => {
-            playerDeck.push(Number(input.value) || 0);
-        });
-        cpuDeck = generateCPUDeck();
-        playerWins = 0;
-        cpuWins = 0;
-        turnCount = 0;
-        isProcessingTurn = false;
-        // ▲▲ ここまで復活 ▲▲
+    async function startBattle() {
+    const inputs = document.querySelectorAll('.card-cost-input');
+    playerDeck = [];
+    inputs.forEach(input => {
+        playerDeck.push(Number(input.value) || 0);
+    });
 
+    playerWins = 0;
+    cpuWins = 0;
+    turnCount = 0;
+    isProcessingTurn = false;
+
+    if (isOnlineBattle) {
+        // ▼ オンライン対戦の場合：Firebaseにデッキを送信して待機
+        const startBtn = document.getElementById('btn-start-battle');
+        startBtn.innerText = "相手を待っています...";
+        startBtn.disabled = true;
+
+        try {
+            const roomRef = window.doc(window.db, "rooms", currentRoomId);
+            
+            // 自分がホストかゲストかで保存する場所を分ける
+            if (isHost) {
+                await window.updateDoc(roomRef, {
+                    hostDeck: playerDeck,
+                    hostReady: true
+                });
+            } else {
+                await window.updateDoc(roomRef, {
+                    guestDeck: playerDeck,
+                    guestReady: true
+                });
+            }
+
+            // お互いの準備（Ready）が完了するのを監視
+            const unsubscribeReady = window.onSnapshot(roomRef, (docSnap) => {
+                const data = docSnap.data();
+                if (data && data.hostReady && data.guestReady) {
+                    unsubscribeReady(); // 監視をストップ
+
+                    // 相手のデッキを取得してセット（変数名はcpuDeckを流用します）
+                    cpuDeck = isHost ? data.guestDeck : data.hostDeck;
+                    
+                    document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
+                    document.getElementById('btn-next-turn').style.display = 'none';
+                    document.getElementById('btn-return-home').style.display = 'none';
+                    document.getElementById('battle-player-avatar').innerText = currentAvatar;
+
+                    renderHands();
+                    showScreen('screen-battle');
+                    startBtn.innerText = "バトル開始！"; // ボタンの文字を元に戻す
+                }
+            });
+
+        } catch (e) {
+            console.error("デッキ送信エラー:", e);
+            alert("通信エラーが発生しました。");
+            startBtn.innerText = "バトル開始！";
+            startBtn.disabled = false;
+        }
+
+    } else {
+        // ▼ オフライン（練習モード）の場合：従来通りCPUのデッキを自動生成して即開始
+        cpuDeck = generateCPUDeck();
         document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
         document.getElementById('btn-next-turn').style.display = 'none';
         document.getElementById('btn-return-home').style.display = 'none';
-
-        // 選択中のアバターをバトル画面に反映させる
         document.getElementById('battle-player-avatar').innerText = currentAvatar;
 
         renderHands();
         showScreen('screen-battle');
     }
+}
     function renderHands() {
         const playerHandEl = document.getElementById('player-hand');
         const cpuHandEl = document.getElementById('cpu-hand');
@@ -745,21 +796,61 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         });
     }
 
-    function playCard(playerCardIndex) {
+    // 既存の playCard 関数を以下に丸ごと差し替えてください
+    async function playCard(playerCardIndex) {
         if (isProcessingTurn) return;
         isProcessingTurn = true;
 
+        const playerCardEl = document.getElementById(`player-card-${playerCardIndex}`);
+        playerCardEl.style.transition = "transform 0.3s";
+        playerCardEl.style.transform = "translateY(-20px)";
+
+        if (isOnlineBattle) {
+            // ▼ オンラインモードの場合：自分のカードをFirebaseに送り、相手を待つ
+            document.getElementById('battle-log').innerHTML = "<span>相手の選択を待っています...</span>";
+            
+            try {
+                const roomRef = window.doc(window.db, "rooms", currentRoomId);
+                
+                // 自分が選んだカードの位置（インデックス）を保存
+                if (isHost) {
+                    await window.updateDoc(roomRef, { hostCardIndex: playerCardIndex });
+                } else {
+                    await window.updateDoc(roomRef, { guestCardIndex: playerCardIndex });
+                }
+
+                // お互いがカードを出したか監視
+                const unsubscribeTurn = window.onSnapshot(roomRef, (docSnap) => {
+                    const data = docSnap.data();
+                    // 両方のカードが出揃った（nullやundefinedではない）ら
+                    if (data && data.hostCardIndex != null && data.guestCardIndex != null) {
+                        unsubscribeTurn(); // 監視ストップ
+
+                        // 相手が出したカードのインデックスを取得して、勝敗判定へ進む
+                        const opponentCardIndex = isHost ? data.guestCardIndex : data.hostCardIndex;
+                        resolveTurn(playerCardIndex, opponentCardIndex);
+                    }
+                });
+            } catch (e) {
+                console.error("カード送信エラー:", e);
+                alert("通信エラーが発生しました。");
+            }
+
+        } else {
+            // ▼ オフライン（練習モード）の場合：今まで通りすぐCPUがカードを出す
+            const availableCpuIndices = cpuDeck.map((p, i) => p !== null ? i : -1).filter(i => i !== -1);
+            const cpuCardIndex = availableCpuIndices[Math.floor(Math.random() * availableCpuIndices.length)];
+            resolveTurn(playerCardIndex, cpuCardIndex);
+        }
+    }
+
+    // ▼ 新規追加：勝敗判定とアニメーションを行う専用の関数
+    function resolveTurn(playerCardIndex, cpuCardIndex) {
         const playerPower = playerDeck[playerCardIndex];
-        const availableCpuIndices = cpuDeck.map((p, i) => p !== null ? i : -1).filter(i => i !== -1);
-        const cpuCardIndex = availableCpuIndices[Math.floor(Math.random() * availableCpuIndices.length)];
         const cpuPower = cpuDeck[cpuCardIndex];
 
         const cpuCardEl = document.getElementById(`cpu-card-${cpuCardIndex}`);
         const cpuCardFrontEl = document.getElementById(`cpu-card-front-${cpuCardIndex}`);
-        const playerCardEl = document.getElementById(`player-card-${playerCardIndex}`);
-
-        playerCardEl.style.transition = "transform 0.3s";
-        playerCardEl.style.transform = "translateY(-20px)";
 
         cpuCardFrontEl.innerText = cpuPower;
         setTimeout(() => {
@@ -769,14 +860,14 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         playerDeck[playerCardIndex] = null;
         cpuDeck[cpuCardIndex] = null;
 
-        let resultMsg = `<span>あなた [ ${playerPower} ] vs [ ${cpuPower} ] CPU</span>`;
+        let resultMsg = `<span>あなた [ ${playerPower} ] vs [ ${cpuPower} ] 相手</span>`;
         
         if (playerPower > cpuPower) {
             playerWins++;
             resultMsg += `<span style="color:#2980b9; font-weight:bold; margin-top:4px;">➔ あなたの勝ち！</span>`;
         } else if (playerPower < cpuPower) {
             cpuWins++;
-            resultMsg += `<span style="color:#c0392b; font-weight:bold; margin-top:4px;">➔ CPUの勝ち...</span>`;
+            resultMsg += `<span style="color:#c0392b; font-weight:bold; margin-top:4px;">➔ 相手の勝ち...</span>`;
         } else {
             resultMsg += `<span style="color:#7f8c8d; font-weight:bold; margin-top:4px;">➔ 引き分け！</span>`;
         }
@@ -849,16 +940,31 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
     }
 
-    function nextTurn() {
+    // 既存の nextTurn 関数を以下に差し替えてください
+    async function nextTurn() {
         document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
         document.getElementById('btn-next-turn').style.display = 'none';
-        isProcessingTurn = false;
-        renderHands();
+        
+        // ▼ 追加：オンラインの場合、ホストが代表してFirebase上の「場に出たカード」をリセットする
+        if (isOnlineBattle && isHost) {
+            try {
+                const roomRef = window.doc(window.db, "rooms", currentRoomId);
+                // null を入れてリセット（次のターンのために空にする）
+                await window.updateDoc(roomRef, {
+                    hostCardIndex: null,
+                    guestCardIndex: null
+                });
+            } catch(e) {
+                console.error("ターンリセットエラー", e);
+            }
+        }
+        
+        // 通信のズレを防ぐため、少しだけ待ってから次のターンを許可する
+        setTimeout(() => {
+            isProcessingTurn = false;
+            renderHands();
+        }, 500);
     }
-    
-    // 起動時の初期化
-    // document.getElementById('avatar-display').innerText = currentAvatar;
-    updateCoinUI();
 
     </script>
 
