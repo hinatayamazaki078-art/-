@@ -625,12 +625,24 @@
 
     function startBattle() {
         const inputs = document.querySelectorAll('.card-cost-input');
-        // ... (中略) ...
+        
+        // ▼▼ 「中略」で消えてしまっていた大事なプログラムを復活 ▼▼
+        playerDeck = [];
+        inputs.forEach(input => {
+            playerDeck.push(Number(input.value) || 0);
+        });
+        cpuDeck = generateCPUDeck();
+        playerWins = 0;
+        cpuWins = 0;
+        turnCount = 0;
+        isProcessingTurn = false;
+        // ▲▲ ここまで復活 ▲▲
+
         document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
         document.getElementById('btn-next-turn').style.display = 'none';
         document.getElementById('btn-return-home').style.display = 'none';
 
-        // ★追加: 選択中のアバターをバトル画面に反映させる
+        // 選択中のアバターをバトル画面に反映させる
         document.getElementById('battle-player-avatar').innerText = currentAvatar;
 
         renderHands();
