@@ -338,6 +338,8 @@
     let isOnlineBattle = false;   // オンライン戦（掛金戦）かどうかのフラグ
     let lobbySeats = [];          // ロビーの席一覧
     let matchingTimeout = null;   // エントリー時の擬似マッチング用タイマー
+    let currentRoomId = null;       // 自分の部屋のID
+let unsubscribeLobby = null;    // ロビー監視の解除用関数
 
     let playerDeck = [];
     let cpuDeck = [];
@@ -459,6 +461,31 @@
         showScreen('screen-bet-select');
     }
 
+   let unsubscribe = null; // リスナー解除用
+
+function listenToLobby() {
+    // roomsコレクションの状態をリアルタイム監視
+    unsubscribe = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
+        lobbySeats = []; // 現在のリストをリセット
+        
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            // 待機中の部屋だけをリストに追加
+            if (data.status === "waiting") {
+                lobbySeats.push({
+                    id: doc.id, // FirestoreのドキュメントID
+                    name: data.hostName,
+                    bet: data.betAmount,
+                    isNPC: false
+                });
+            }
+        });
+        
+        // 画面を再描画
+        renderLobbyList();
+    });
+}
+    
     function renderBetButtons() {
         const container = document.getElementById('bet-buttons-container');
         container.innerHTML = '';
@@ -488,90 +515,138 @@
         lobbySeats = [];
     }
 
-    function handleLobbyAction(mode) {
-        if (coins < currentBet) {
-            alert("コインが足りません！");
-            return;
-        }
+    async function handleLobbyAction(mode) {
+    if (coins < currentBet) {
+        alert("コインが足りません！");
+        return;
+    }
 
-        // ロビー一覧の初期化（サーバー連携時はここでデータをフェッチします）
-        generateNPCSeats(); 
+    if (mode === 'entry') {
+        // 【ステップ2】エントリー：Firebaseに部屋データを送信して作成する
+        coins -= currentBet;
+        updateCoinUI();
+        isOnlineBattle = true;
 
-        if (mode === 'entry') {
-            // エントリー：掛金を先に支払い、自分の席を一覧に掲載
-            coins -= currentBet;
-            updateCoinUI();
-            isOnlineBattle = true;
+        const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
+        
+        try {
+            // Firebaseの "rooms" コレクションに新しいデータを書き込む
+            const docRef = await window.addDoc(window.collection(window.db, "rooms"), {
+                hostName: '👑 ' + pName,
+                hostAvatar: currentAvatar,
+                betAmount: currentBet,
+                status: "waiting", // 「待機中」ステータス
+                createdAt: new Date()
+            });
+            currentRoomId = docRef.id; // 作成された部屋のIDを保持
+            console.log("部屋を作成しました。ID: ", currentRoomId);
 
-            const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
-            lobbySeats.unshift({ id: 'player_entry', name: '👑 ' + pName + ' (あなた)', bet: currentBet, isNPC: false });
-
-            renderLobbyList();
-            showScreen('screen-lobby');
-
-            // 挑戦者を待つ案内を表示
-            document.getElementById('btn-lobby-back').style.display = 'block'; // 待ち状態でも戻れるように変更
-            const notice = document.createElement('div');
-            notice.style.cssText = 'text-align:center; color:#e74c3c; font-weight:bold; margin-bottom:10px; animation: fadeIn 0.5s infinite alternate;';
-            notice.innerText = '⏳ 他のプレイヤーからの挑戦を待っています...';
-            document.getElementById('lobby-list-container').prepend(notice);
-
-            // ==========================================
-            // 【変更点】NPCが2.5秒後に乱入してくる処理を削除しました
-            // ==========================================
-
-        } else if (mode === 'challenge') {
-            // 挑戦：ロビーのエントリー一覧へ進み、そこから席を選べるようにする
-            renderLobbyList();
             showScreen('screen-lobby');
             document.getElementById('btn-lobby-back').style.display = 'block';
-        }
-    }
-    function renderLobbyList() {
-        const container = document.getElementById('lobby-list-container');
-        container.innerHTML = '';
-
-        lobbySeats.forEach(seat => {
-            let actionHtml = '';
-            // 自分自身の席かどうかをID等で判定（ここでは 'player_entry' かどうかで判定）
-            const isSelf = seat.id === 'player_entry'; 
-
-            if (isSelf) {
-                actionHtml = '<span style="color:#27ae60; font-weight:bold; font-size:13px;">対戦待ち...</span>';
-            } else {
-                const canAfford = coins >= seat.bet;
-                actionHtml = `<button class="lobby-join-btn" ${canAfford ? '' : 'disabled'} onclick="challengeSeat('${seat.id}', ${seat.bet})">挑戦する</button>`;
-            }
-
-            container.innerHTML += `
-                <div class="lobby-item">
-                    <div class="lobby-item-info">
-                        <span class="lobby-item-name">${seat.name}</span>
-                        <span class="lobby-item-bet">🪙 ${seat.bet.toLocaleString()}</span>
-                    </div>
-                    <div>${actionHtml}</div>
+            
+            const container = document.getElementById('lobby-list-container');
+            container.innerHTML = `
+                <div style="text-align:center; color:#e74c3c; font-weight:bold; margin-bottom:10px; animation: fadeIn 0.5s infinite alternate;">
+                    ⏳ 挑戦者を待っています...<br>
+                    (掛金: 🪙 ${currentBet.toLocaleString()})
                 </div>
             `;
+            
+            // ※次回、ここに「誰かが入ってきたかを監視する処理」を追加します！
+
+        } catch (error) {
+            console.error("部屋の作成に失敗:", error);
+            alert("通信エラーが発生しました。");
+        }
+
+    } else if (mode === 'challenge') {
+        // 【ステップ3】挑戦：Firebaseから待機中の部屋をリアルタイム取得する
+        showScreen('screen-lobby');
+        document.getElementById('btn-lobby-back').style.display = 'block';
+        
+        const container = document.getElementById('lobby-list-container');
+        container.innerHTML = '<div style="text-align:center; color:#7f8c8d;">部屋を探しています...</div>';
+
+        // すでに監視中なら一度解除する
+        if (unsubscribeLobby) unsubscribeLobby();
+
+        // "rooms" コレクションの更新をリアルタイムで監視（onSnapshot）
+        unsubscribeLobby = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
+            lobbySeats = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // "waiting"（待機中）の部屋だけをリストアップする
+                if (data.status === "waiting") {
+                    lobbySeats.push({
+                        id: doc.id,
+                        name: data.hostName,
+                        bet: data.betAmount,
+                        isNPC: false
+                    });
+                }
+            });
+            renderLobbyList(); // 取ってきたデータで画面を描画
         });
     }
+}
+    function renderLobbyList() {
+    const container = document.getElementById('lobby-list-container');
+    container.innerHTML = '';
 
-    function challengeSeat(seatId, betAmount) {
-        if (coins < betAmount) {
-            alert("コイン不足のため挑戦できません！");
-            return;
-        }
-        if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
-            coins -= betAmount;
-            updateCoinUI();
-            currentBet = betAmount;
-            goToBuildScreen(true);
-        }
+    if (lobbySeats.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#7f8c8d;">現在、待機中のプレイヤーはいません。</div>';
+        return;
     }
 
+    lobbySeats.forEach(seat => {
+        // 自分の作った部屋は「挑戦」ボタンを出さずに対戦待ち表示にする
+        const isSelf = seat.id === currentRoomId; 
+        let actionHtml = '';
 
-    // =========================================
-    // バトル関連ロジック
-    // =========================================
+        if (isSelf) {
+            actionHtml = '<span style="color:#27ae60; font-weight:bold; font-size:13px;">対戦待ち...</span>';
+        } else {
+            const canAfford = coins >= seat.bet;
+            actionHtml = `<button class="lobby-join-btn" ${canAfford ? '' : 'disabled'} onclick="challengeSeat('${seat.id}', ${seat.bet})">挑戦する</button>`;
+        }
+
+        container.innerHTML += `
+            <div class="lobby-item">
+                <div class="lobby-item-info">
+                    <span class="lobby-item-name">${seat.name}</span>
+                    <span class="lobby-item-bet">🪙 ${seat.bet.toLocaleString()}</span>
+                </div>
+                <div>${actionHtml}</div>
+            </div>
+        `;
+    });
+}
+    async function challengeSeat(roomId, betAmount) {
+    if (coins < betAmount) {
+        alert("コイン不足のため挑戦できません！");
+        return;
+    }
+    if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
+        coins -= betAmount;
+        updateCoinUI();
+        currentBet = betAmount;
+
+        // 📝 変更点：対象の部屋のステータスを「対戦中」に更新（updateDoc）
+        try {
+            const roomRef = window.doc(window.db, "rooms", roomId);
+            await window.updateDoc(roomRef, {
+                status: "playing",
+                guestName: "挑戦者" // 自分の名前などを入れる
+            });
+            console.log("マッチング成立！");
+            
+            // 自分の画面をデッキ構築画面へ進める
+            goToBuildScreen(true);
+        } catch (e) {
+            alert("この席は既に埋まっているか、エラーが発生しました。");
+        }
+    }
+}
     function goToBuildScreen(isOnline) {
         isOnlineBattle = isOnline; // オンラインバトルフラグを設定
         showScreen('screen-build');
