@@ -296,7 +296,7 @@
         
         <div class="battle-area">
             <!-- 追加: CPUのアバター（上部） -->
-            <div style="text-align: center; font-size: 48px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">🤖</div>
+            <div id="battle-opponent-avatar" style="text-align: center; font-size: 48px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">🤖</div>
 
             <div class="cpu-area">
                 <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">CPU HAND</h3>
@@ -340,6 +340,7 @@
     let matchingTimeout = null;   // エントリー時の擬似マッチング用タイマー
     let currentRoomId = null;       // 自分の部屋のID
 let unsubscribeLobby = null;    // ロビー監視の解除用関数
+    let unsubscribeHost = null; // 🌟
     let isHost = false;             // ▼ 新規追加: 自分がホストかどうか
 
     let playerDeck = [];
@@ -366,6 +367,9 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 
     function goToHome() {
         if (matchingTimeout) clearTimeout(matchingTimeout);
+        if (unsubscribeLobby) { unsubscribeLobby(); unsubscribeLobby = null; }
+        if (unsubscribeHost) { unsubscribeHost(); unsubscribeHost = null; }
+
         showScreen('screen-home');
         updateCoinUI();
     }
@@ -532,7 +536,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             // ▼▼ ここから追加 ▼▼
             // ホスト用の部屋監視（誰かが入ってきたかチェック）
             const roomRef = window.doc(window.db, "rooms", currentRoomId);
-            const unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
+            unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
                 const data = docSnap.data();
                 // ステータスが playing（誰かが挑戦ボタンを押した）になったら
                 if (data && data.status === "playing") {
@@ -620,13 +624,15 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         updateCoinUI();
         isHost = false;
         currentBet = betAmount;
+        currentRoomId = roomId; // 🌟
 
         // 📝 変更点：対象の部屋のステータスを「対戦中」に更新（updateDoc）
         try {
             const roomRef = window.doc(window.db, "rooms", roomId);
             await window.updateDoc(roomRef, {
                 status: "playing",
-                guestName: "挑戦者" // 自分の名前などを入れる
+                guestName: document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト',
+                guestAvatar: currentAvatar // 🌟【追加】自分のアバター情報を相手に送る
             });
             console.log("マッチング成立！");
             
@@ -637,6 +643,18 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
     }
 }
+    // 🌟 画像か絵文字かを判別して表示用のHTMLを作る関数
+    function renderAvatarHtml(avatar) {
+        if (!avatar) return '🤖';
+        if (avatar.includes('.png')) {
+            // 画像の場合は img タグにする
+            return `<img src="${avatar}" style="height: 60px; object-fit: contain;">`;
+        } else {
+            // 絵文字の場合はそのまま
+            return avatar;
+        }
+    }
+    
     function goToBuildScreen(isOnline) {
         isOnlineBattle = isOnline; // オンラインバトルフラグを設定
         showScreen('screen-build');
@@ -734,7 +752,9 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
                     document.getElementById('btn-next-turn').style.display = 'none';
                     document.getElementById('btn-return-home').style.display = 'none';
-                    document.getElementById('battle-player-avatar').innerText = currentAvatar;
+                    const opponentAvatar = isHost ? data.guestAvatar : data.hostAvatar;
+                    document.getElementById('battle-player-avatar').innerHTML = renderAvatarHtml(currentAvatar);
+                    document.getElementById('battle-opponent-avatar').innerHTML = renderAvatarHtml(opponentAvatar);
 
                     renderHands();
                     showScreen('screen-battle');
@@ -755,7 +775,8 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
         document.getElementById('btn-next-turn').style.display = 'none';
         document.getElementById('btn-return-home').style.display = 'none';
-        document.getElementById('battle-player-avatar').innerText = currentAvatar;
+        document.getElementById('battle-player-avatar').innerHTML = renderAvatarHtml(currentAvatar);
+        document.getElementById('battle-opponent-avatar').innerHTML = '🤖';
 
         renderHands();
         showScreen('screen-battle');
@@ -942,30 +963,44 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 
     // 既存の nextTurn 関数を以下に差し替えてください
     async function nextTurn() {
-        document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
+        document.getElementById('battle-log').innerHTML = "<span>次のターンを準備中...</span>"; // 変更
         document.getElementById('btn-next-turn').style.display = 'none';
         
-        // ▼ 追加：オンラインの場合、ホストが代表してFirebase上の「場に出たカード」をリセットする
-        if (isOnlineBattle && isHost) {
-            try {
-                const roomRef = window.doc(window.db, "rooms", currentRoomId);
-                // null を入れてリセット（次のターンのために空にする）
-                await window.updateDoc(roomRef, {
-                    hostCardIndex: null,
-                    guestCardIndex: null
-                });
-            } catch(e) {
-                console.error("ターンリセットエラー", e);
+        if (isOnlineBattle) {
+            // ① ホストが代表してFirebase上の「場に出たカード」をリセットする
+            if (isHost) {
+                try {
+                    const roomRef = window.doc(window.db, "rooms", currentRoomId);
+                    await window.updateDoc(roomRef, {
+                        hostCardIndex: null,
+                        guestCardIndex: null
+                    });
+                } catch(e) {
+                    console.error("ターンリセットエラー", e);
+                }
             }
-        }
-        
-        // 通信のズレを防ぐため、少しだけ待ってから次のターンを許可する
-        setTimeout(() => {
-            isProcessingTurn = false;
-            renderHands();
-        }, 500);
-    }
+            
+            // ② 🌟【重要】リセットされたことをFirebase経由で確認してから操作を許可する
+            const roomRef = window.doc(window.db, "rooms", currentRoomId);
+            const unsub = window.onSnapshot(roomRef, (docSnap) => {
+                const data = docSnap.data();
+                if (data && data.hostCardIndex == null && data.guestCardIndex == null) {
+                    unsub(); // 監視ストップ
+                    isProcessingTurn = false;
+                    document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
+                    renderHands();
+                }
+            });
 
+        } else {
+            // オフラインの場合は今まで通り
+            setTimeout(() => {
+                isProcessingTurn = false;
+                document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
+                renderHands();
+            }, 500);
+        }
+    }
     </script>
 
 <script type="module">
