@@ -977,7 +977,10 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             }
             isOnlineBattle = false; // フラグリセット
         } else {
-            nextBtn.style.display = 'block';
+            // ▼ ボタンを表示せず、2.5秒（2500ミリ秒）待ってから自動で次のターンへ進む
+            setTimeout(() => {
+                nextTurn();
+            }, 2500);
         }
     }
 
