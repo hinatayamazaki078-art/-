@@ -215,6 +215,16 @@
         .avatar-grid-item { font-size: 40px; width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; background: #2c3e50; border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
         .avatar-grid-item:hover { transform: scale(1.1); }
         .avatar-grid-item.selected { border: 2px solid #f1c40f; background: #34495e; }
+   /* =========================================
+           4. 資産装備・ネットショッピング用スタイル
+           ========================================= */
+        .asset-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 10px; }
+        .asset-slot { background: white; border: 2px dashed #bdc3c7; border-radius: 8px; height: 55px; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; }
+        .asset-slot.equipped { border-style: solid; border-color: #f1c40f; background-color: #fffdf2; }
+        .asset-list { display: flex; flex-wrap: wrap; gap: 8px; overflow-y: auto; max-height: 180px; padding: 5px; }
+        .asset-item { background: white; border: 1px solid #bdc3c7; padding: 8px 12px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; overflow-y: auto; flex-grow: 1; margin-bottom: 15px; padding: 5px; }
+        .shop-item { background: white; border: 1px solid #bdc3c7; border-radius: 8px; padding: 10px; text-align: center; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -242,7 +252,10 @@
         <!-- 1. ヘッダー (ボタンなどの奥にいかないよう手前に配置) -->
         <div class="header-status" style="position: relative; z-index: 10;">
             <div class="header-left">
-                <span id="player-name" style="cursor: pointer; text-decoration: underline; text-underline-offset: 3px;" onclick="changePlayerName()">👑 ゲスト</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="player-name" style="cursor: pointer; text-decoration: underline; text-underline-offset: 3px;" onclick="changePlayerName()">👑 ゲスト</span>
+                    <span style="cursor: pointer; font-size: 18px;" onclick="goToAssetsScreen()">💼</span>
+                </div>
                 <span id="player-level">Lv: 1</span>
             </div>
             <div class="coin-display">
@@ -265,6 +278,7 @@
 
         <!-- 4. ボタンエリア (手前に配置してクリックできるようにする) -->
         <div style="position: relative; z-index: 10;">
+            <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #16a085, #1abc9c); color: white; margin-bottom: 15px;" onclick="goToShopScreen()">🛒 ネットショッピング</button>
             <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 100コインでガチャを回す</button>
             <button class="change-avatar-btn" style="width:100%;" onclick="openAvatarList()">👕 アバターを変更する</button>
             <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22;" onclick="goToBetSelectScreen()">🪑 席を探す (オンライン)</button>
@@ -306,6 +320,41 @@
         <div class="score-board">
             Player <span id="score-player" style="color:#2980b9;">0</span> - <span id="score-cpu" style="color:#c0392b;">0</span> CPU (3勝先取)
         </div>
+
+        <!-- ▼ 新規追加: 資産装備画面 ▼ -->
+    <div id="screen-assets" class="screen">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">資産ステータス</h2>
+        <p style="text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 10px;">
+            最大10個まで装備可能<br>
+            総資産額: <span id="total-asset-value" style="color: #d35400; font-weight: bold; font-size: 18px;">0</span> コイン
+        </p>
+        
+        <div id="asset-slots" class="asset-grid">
+            <!-- ここに装備スロットが10個並びます -->
+        </div>
+
+        <h3 style="color: #2c3e50; margin-top: 15px; font-size: 16px;">所持している資産</h3>
+        <div id="owned-assets-list" class="asset-list">
+            <div style="color:#7f8c8d; text-align:center; width:100%;">まだ資産を持っていません。ショップで購入しましょう！</div>
+        </div>
+
+        <button style="background-color: #7f8c8d; margin-top: auto;" onclick="goToHome()">🏠 ホームに戻る</button>
+    </div>
+
+    <!-- ▼ 新規追加: ネットショッピング画面 ▼ -->
+    <div id="screen-shop" class="screen">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">ネットショッピング</h2>
+        <p style="text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">
+            商品は10分ごとに更新されます<br>
+            次回の更新まで: <span id="shop-update-timer" style="font-weight: bold; color: #2980b9;">--:--</span>
+        </p>
+        
+        <div id="shop-items" class="shop-grid">
+            <!-- ここに商品が並びます -->
+        </div>
+
+        <button style="background-color: #7f8c8d; margin-top: auto;" onclick="goToHome()">🏠 ホームに戻る</button>
+    </div>
         
         <div class="battle-area">
             <!-- 追加: CPUのアバター（上部） -->
@@ -340,6 +389,34 @@
     const avatars = ['キャラ1.png', 'キャラ2.png', 'キャラ3.png', 'キャラ4.png', 'キャラ6.png', 'キャラ7.png'];
     const betAmounts = [10, 30, 50, 100, 300, 500, 1000, 3000, 10000, 50000, 100000, 500000, 1000000];
     const npcNames = ['サトシ', 'カスミ', 'タケシ', 'シゲル', 'キバナ', 'ダンデ', 'シロナ', 'ワタル', 'ダイゴ', 'ヒカリ'];
+
+    // ネットショッピング用のベース商品（10種類）
+    const baseShopItems = [
+        { id: 1, name: "高級ブランド時計", price: 5000, icon: "⌚" },
+        { id: 2, name: "ゴールド高級外車", price: 50000, icon: "🚗" },
+        { id: 3, name: "VIPな王冠", price: 120000, icon: "👑" },
+        { id: 4, name: "裏カジノの権利書", price: 600000, icon: "📜" },
+        { id: 5, name: "常夏のプライベート島", price: 1500000, icon: "🏝️" },
+        { id: 6, name: "純金インゴット", price: 25000, icon: "🪙" },
+        { id: 7, name: "タワーマンション最上階", price: 300000, icon: "🏢" },
+        { id: 8, name: "超巨大メガクルーザー", price: 900000, icon: "🚢" },
+        { id: 9, name: "プライベートジェット機", price: 4000000, icon: "🛩️" },
+        { id: 10, name: "月旅行プレミアムチケット", price: 10000000, icon: "🚀" }
+    ];
+
+    let shopCurrentItems = []; // 現在ショップに並んでいる商品リスト
+    let shopTimerInterval = null; // タイマー管理用
+
+    // ▼ 追加: プレイヤーの資産管理用データ ▼
+    // テスト用に、最初から3つの資産をカバン（所持リスト）に持たせておきます
+    let ownedAssets = [
+        { id: 1, name: "高級ブランド時計", price: 5000, icon: "⌚" },
+        { id: 3, name: "VIPな王冠", price: 120000, icon: "👑" },
+        { id: 6, name: "純金インゴット", price: 25000, icon: "🪙" }
+    ];
+    
+    // 10個の装備枠。最初はすべて空（null）の状態で10個分用意します
+    let equippedAssets = Array(10).fill(null);
 
     // 最初から2つのキャラを持たせておきます
     let unlockedAvatars = ['キャラ1.png', 'キャラ2.png']; 
@@ -707,6 +784,124 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 }
     
+    // 資産画面の見た目を最新の状態に更新する
+    function renderAssetsScreen() {
+        // 1. 10個の装備スロットの描画
+        const slotsContainer = document.getElementById('asset-slots');
+        slotsContainer.innerHTML = '';
+        
+        let totalValue = 0; // 総資産額を計算する用の変数
+
+        for (let i = 0; i < 10; i++) {
+            const item = equippedAssets[i];
+            
+            if (item) {
+                totalValue += item.price; // 装備しているアイテムの金額を加算
+                slotsContainer.innerHTML += `
+                    <div class="asset-slot equipped" onclick="unequipAsset(${i})" title="${item.name} (タップで外す)">
+                        ${item.icon}
+                    </div>
+                `;
+            } else {
+                slotsContainer.innerHTML += `
+                    <div class="asset-slot" onclick="alert('下の「所持している資産」からアイテムをタップするとここに装備できます！')">
+                        <!-- 空っぽのスロット -->
+                    </div>
+                `;
+            }
+        }
+
+        // 計算した総資産額を画面に反映
+        document.getElementById('total-asset-value').innerText = totalValue.toLocaleString();
+
+        // 2. 所持している資産リストの描画
+        const listContainer = document.getElementById('owned-assets-list');
+        listContainer.innerHTML = '';
+
+        if (ownedAssets.length === 0) {
+            listContainer.innerHTML = '<div style="color:#7f8c8d; text-align:center; width:100%; font-size:13px; padding:20px 0;">装備していない資産はありません。</div>';
+            return;
+        }
+
+        ownedAssets.forEach(item => {
+            listContainer.innerHTML += `
+                <div class="asset-item" onclick="equipAsset(${item.id})" title="タップで装備">
+                    <div style="font-size: 24px;">${item.icon}</div>
+                    <div style="font-size: 11px; font-weight: bold; margin-top:4px; color:#2c3e50;">${item.name}</div>
+                    <div style="font-size: 10px; color: #7f8c8d; margin-top:2px;">🪙 ${item.price.toLocaleString()}</div>
+                </div>
+            `;
+        });
+    }
+
+    // 資産をカバンからスロットへ「装備」する
+    function equipAsset(assetId) {
+        // カバン（所持リスト）から対象アイテムを探す
+        const assetIndex = ownedAssets.findIndex(a => a.id === assetId);
+        if (assetIndex === -1) return;
+        const asset = ownedAssets[assetIndex];
+
+        // 10個の装備枠の中で、空いている（nullの）一番最初のスロットを探す
+        const emptySlotIndex = equippedAssets.indexOf(null);
+        
+        if (emptySlotIndex === -1) {
+            alert("これ以上装備できません！スロットが満杯（最大10個）です。");
+            return;
+        }
+
+        // 空き枠にアイテムを入れ、カバンから取り除く
+        equippedAssets[emptySlotIndex] = asset;
+        ownedAssets.splice(assetIndex, 1);
+
+        // 画面をリフレッシュ
+        renderAssetsScreen();
+    }
+
+    // 資産をスロットから外してカバンへ「戻す」
+    function unequipAsset(slotIndex) {
+        const asset = equippedAssets[slotIndex];
+        if (!asset) return;
+
+        // スロットを空っぽにして、カバンに戻す
+        equippedAssets[slotIndex] = null;
+        ownedAssets.push(asset);
+
+        // 画面をリフレッシュ
+        renderAssetsScreen();
+    }
+
+    // 資産画面へ移動（★ここを書き換え！）
+    function goToAssetsScreen() {
+        renderAssetsScreen(); // 最新の装備状況・総資産額を計算して描画
+        showScreen('screen-assets');
+    }
+
+    // ショップ画面のアイテムを画面に表示する
+    function renderShopScreen() {
+        const container = document.getElementById('shop-items');
+        container.innerHTML = '';
+        
+        shopCurrentItems.forEach(item => {
+            container.innerHTML += `
+                <div class="shop-item">
+                    <div style="font-size: 32px;">${item.icon}</div>
+                    <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">${item.name}</div>
+                    <div style="color: #f1c40f; font-weight: bold; font-size: 13px; background: #1a1a1a; padding: 2px 8px; border-radius: 12px; width: fit-content; margin: 0 auto;">
+                        🪙 ${item.price.toLocaleString()}
+                    </div>
+                    <!-- 商品内容は未実装のため、ボタンは無効化(disabled) -->
+                    <button style="margin-bottom: 0; padding: 6px; font-size: 12px; background-color: #bdc3c7; color: #7f8c8d;" disabled>未実装</button>
+                </div>
+            `;
+        });
+    }
+
+    // ショップ画面へ移動（ここを書き換え！）
+    function goToShopScreen() {
+        renderShopScreen(); // 画面を開くときに最新の品揃えを描画
+        showScreen('screen-shop');
+    }
+    
     function goToBuildScreen(isOnline) {
         isOnlineBattle = isOnline; // オンラインバトルフラグを設定
         showScreen('screen-build');
@@ -727,6 +922,52 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
     }
 
+    // ショップの品揃えを新しくする（10分おきに発動）
+    function updateShopProducts() {
+        // 10種類の商品をランダムにシャッフルして「商品が変わった感」を演出
+        shopCurrentItems = [...baseShopItems].sort(() => Math.random() - 0.5);
+        
+        // もし現在ショップ画面を開いていたら、その場で見た目をリフレッシュする
+        if (document.getElementById('screen-shop').classList.contains('active')) {
+            renderShopScreen();
+        }
+    }
+
+    // 10分ごとのカウントダウンタイマーを動かす
+    function startShopTimer() {
+        if (shopTimerInterval) clearInterval(shopTimerInterval);
+        
+        function tick() {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            
+            // 次の10分区切り（例: 20分、30分など）までの残り時間を計算
+            const nextTargetMinute = Math.ceil((minutes + 0.01) / 10) * 10;
+            const totalRemainingSeconds = ((nextTargetMinute - minutes) * 60) - seconds;
+            
+            // 残り「分」と「秒」に変換
+            const displayMin = Math.floor(totalRemainingSeconds / 60);
+            const displaySec = totalRemainingSeconds % 60;
+            
+            // 画面のタイマー表示を更新
+            const timerEl = document.getElementById('shop-update-timer');
+            if (timerEl) {
+                timerEl.innerText = `${String(displayMin).padStart(2, '0')}:${String(displaySec).padStart(2, '0')}`;
+            }
+            
+            // ちょうど10分区切りのタイミング（残り0秒）になったら商品を更新
+            if (totalRemainingSeconds <= 0) {
+                updateShopProducts();
+            }
+        }
+        
+        // 最初の一回を実行し、以降1秒ごとに時計を刻む
+        updateShopProducts();
+        tick();
+        shopTimerInterval = setInterval(tick, 1000);
+    }
+    
     function updateCost() {
         const inputs = document.querySelectorAll('.card-cost-input');
         let total = 0;
@@ -1108,6 +1349,8 @@ async function nextTurn() {
     window.updateDoc = updateDoc;
     
     console.log("🔥 Firebase 準備完了！");
+
+    startShopTimer();
 </script>
 <!-- ▲▲ Firebase の設定ここまで ▲▲ -->
 
