@@ -276,8 +276,9 @@
 
         <!-- 4. ボタンエリア (手前に配置してクリックできるようにする) -->
         <div style="position: relative; z-index: 10;">
-            <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #16a085, #1abc9c); color: white; margin-bottom: 15px;" onclick="goToShopScreen()">🛒 ネットショッピング</button>
-            <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 100コインでガチャを回す</button>
+            <div style="text-align: center; margin-bottom: 15px;">
+                <img src="ショップボタン.png" alt="Shop" style="width: 80%; max-width: 300px; cursor: pointer; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); transition: transform 0.1s;" onclick="openShopMenu()" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
+            </div>
             <button class="change-avatar-btn" style="width:100%;" onclick="openAvatarList()">👕 アバターを変更する</button>
             <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22;" onclick="goToLobbyScreen()">🪑 席を探す (オンライン)</button>
             <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen(false)">⚔️ オフライン練習モード</button>
@@ -298,6 +299,25 @@
         <button style="background-color: #7f8c8d; margin-top: 10px;" onclick="goToHome()">🏠 ホームに戻る</button>
     </div>
 
+<!-- ▼ 新規追加：ショップメニュー画面 -->
+    <div id="screen-shop" class="screen">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">ショップメニュー</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">利用するコンテンツを選んでください。</p>
+        
+        <div style="position: relative; z-index: 10; padding: 0 10px;">
+            <!-- 既存の機能 -->
+            <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #16a085, #1abc9c); color: white; margin-bottom: 15px;" onclick="goToShopScreen()">🛒 ネットショッピング</button>
+            <button class="gacha-btn" style="width:100%; margin-bottom: 25px;" onclick="playGacha()">💎 100コインでガチャを回す</button>
+            
+            <!-- 新規追加のボタン（機能は準備中アラート） -->
+            <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #f39c12, #d35400); color: white; margin-bottom: 15px;" onclick="alert('専用景品画面は現在準備中です！')">🎁 専用景品</button>
+            <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: white; margin-bottom: 15px;" onclick="alert('カードデザイン購入画面は現在準備中です！')">🃏 カードデザイン購入</button>
+            
+            <!-- 戻るボタン -->
+            <button style="background-color: #7f8c8d; width: 100%; margin-top: 10px;" onclick="goToHome()">⬅️ ホームに戻る</button>
+        </div>
+    </div>
+    
     <div id="screen-lobby" class="screen">
         <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">エントリー一覧</h2>
         <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">席を選んで挑戦、または他プレイヤーの参入を待ちます。</p>
@@ -1236,6 +1256,11 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             });
             renderLobbyList(); // 取ってきたデータで画面を描画
         });
+    }
+    
+    // ▼ 新規追加：ショップメニュー画面を開く処理
+    function openShopMenu() {
+        showScreen('screen-shop');
     }
     
     function updateScoreBoard() {
