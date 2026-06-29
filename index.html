@@ -663,8 +663,13 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     function renderAvatarHtml(avatar) {
     if (!avatar) return '🤖';
     if (avatar.includes('.png')) {
-        // 画像の場合は高さを100pxにアップ！
-        return `<img src="${avatar}" style="height: 100px; object-fit: contain;">`;
+        // 横160px、縦120pxの見えない四角い枠（overflow: hidden）を作ります。
+        // その中でキャラクターを1.7倍に拡大（scale）し、頭（top）を基準に固定します。
+        return `
+            <div style="width: 160px; height: 120px; overflow: hidden; display: inline-flex; justify-content: center; align-items: flex-start;">
+                <img src="${avatar}" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.7); transform-origin: center top;">
+            </div>
+        `;
     } else {
         return avatar;
     }
