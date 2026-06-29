@@ -320,8 +320,34 @@
         <div class="score-board">
             Player <span id="score-player" style="color:#2980b9;">0</span> - <span id="score-cpu" style="color:#c0392b;">0</span> CPU (3勝先取)
         </div>
+        
+        <div class="battle-area">
+            <!-- 追加: CPUのアバター（上部） -->
+<div id="battle-opponent-avatar" style="text-align: center; font-size: 80px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); min-height: 100px; display: flex; align-items: center; justify-content: center;">🤖</div>
 
-        <!-- ▼ 新規追加: 資産装備画面 ▼ -->
+            <div class="cpu-area">
+                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">CPU HAND</h3>
+                <div id="cpu-hand" class="hand-cards"></div>
+            </div>
+
+            <div class="battle-log" id="battle-log">
+                <span>カードを1枚選んでください</span>
+            </div>
+
+            <div class="player-area">
+                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">YOUR HAND</h3>
+                <div id="player-hand" class="hand-cards"></div>
+            </div>
+            
+            <!-- 追加: 自身のアバター（手前・下部） -->
+<div id="battle-player-avatar" style="text-align: center; font-size: 80px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); min-height: 100px; display: flex; align-items: center; justify-content: center;">🧑‍💻</div>
+        </div>
+        
+        <button id="btn-next-turn" style="display:none; background-color: #27ae60;" onclick="nextTurn()">次のターンへ</button>
+        <button id="btn-return-home" style="display:none; background-color: #d35400;" onclick="goToHome()">🏠 ロビーに戻る</button>
+    </div>
+
+    <!-- ▼ 新規追加: 資産装備画面 ▼ -->
     <div id="screen-assets" class="screen">
         <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">資産ステータス</h2>
         <p style="text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 10px;">
@@ -354,32 +380,6 @@
         </div>
 
         <button style="background-color: #7f8c8d; margin-top: auto;" onclick="goToHome()">🏠 ホームに戻る</button>
-    </div>
-        
-        <div class="battle-area">
-            <!-- 追加: CPUのアバター（上部） -->
-<div id="battle-opponent-avatar" style="text-align: center; font-size: 80px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); min-height: 100px; display: flex; align-items: center; justify-content: center;">🤖</div>
-
-            <div class="cpu-area">
-                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">CPU HAND</h3>
-                <div id="cpu-hand" class="hand-cards"></div>
-            </div>
-
-            <div class="battle-log" id="battle-log">
-                <span>カードを1枚選んでください</span>
-            </div>
-
-            <div class="player-area">
-                <h3 style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 14px;">YOUR HAND</h3>
-                <div id="player-hand" class="hand-cards"></div>
-            </div>
-            
-            <!-- 追加: 自身のアバター（手前・下部） -->
-<div id="battle-player-avatar" style="text-align: center; font-size: 80px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); min-height: 100px; display: flex; align-items: center; justify-content: center;">🧑‍💻</div>
-        </div>
-        
-        <button id="btn-next-turn" style="display:none; background-color: #27ae60;" onclick="nextTurn()">次のターンへ</button>
-        <button id="btn-return-home" style="display:none; background-color: #d35400;" onclick="goToHome()">🏠 ロビーに戻る</button>
     </div>
 
 </div>
