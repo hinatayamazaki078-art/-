@@ -231,7 +231,7 @@
         <!-- 1. ヘッダー (ボタンなどの奥にいかないよう手前に配置) -->
         <div class="header-status" style="position: relative; z-index: 10;">
             <div class="header-left">
-                <span id="player-name">👑 ゲスト</span>
+                <span id="player-name" style="cursor: pointer; text-decoration: underline; text-underline-offset: 3px;" onclick="changePlayerName()">👑 ゲスト</span>
                 <span id="player-level">Lv: 1</span>
             </div>
             <div class="coin-display">
@@ -598,6 +598,25 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         });
     }
 }
+    // プレイヤー名を変更する機能
+    function changePlayerName() {
+        // 現在の名前を取得して「👑 」を取り除く
+        const currentFull = document.getElementById('player-name').innerText;
+        const currentName = currentFull.replace('👑 ', '');
+        
+        // 入力ウィンドウを表示
+        let newName = prompt("新しい名前を入力してください（最大10文字）", currentName);
+        
+        // キャンセルされず、空欄でもない場合のみ名前を更新
+        if (newName !== null && newName.trim() !== "") {
+            // 文字数を最大10文字に制限（レイアウト崩れ防止）
+            newName = newName.trim().substring(0, 10);
+            
+            // 👑マークを再度つけて画面に反映
+            document.getElementById('player-name').innerText = '👑 ' + newName;
+        }
+    }
+    
     function renderLobbyList() {
     const container = document.getElementById('lobby-list-container');
     container.innerHTML = '';
@@ -976,6 +995,11 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                 }
             }
             isOnlineBattle = false; // フラグリセット
+
+setTimeout(() => {
+                goToHome();
+            }, 3000);
+            
         } else {
             // ▼ ボタンを表示せず、2.5秒（2500ミリ秒）待ってから自動で次のターンへ進む
             setTimeout(() => {
