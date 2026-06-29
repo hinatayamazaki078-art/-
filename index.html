@@ -527,13 +527,22 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             showScreen('screen-lobby');
             document.getElementById('btn-lobby-back').style.display = 'block';
             
-            const container = document.getElementById('lobby-list-container');
-            container.innerHTML = `
-                <div style="text-align:center; color:#e74c3c; font-weight:bold; margin-bottom:10px; animation: fadeIn 0.5s infinite alternate;">
-                    ⏳ 挑戦者を待っています...<br>
-                    (掛金: 🪙 ${currentBet.toLocaleString()})
-                </div>
-            `;
+            if (unsubscribeLobby) unsubscribeLobby();
+            unsubscribeLobby = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
+                lobbySeats = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.status === "waiting") {
+                        lobbySeats.push({
+                            id: doc.id,
+                            name: data.hostName,
+                            bet: data.betAmount,
+                            isNPC: false
+                        });
+                    }
+                });
+                renderLobbyList(); // リストを描画
+            });
             
             // ▼▼ ここから追加 ▼▼
             // ホスト用の部屋監視（誰かが入ってきたかチェック）
