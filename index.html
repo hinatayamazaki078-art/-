@@ -529,20 +529,25 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             
             if (unsubscribeLobby) unsubscribeLobby();
             unsubscribeLobby = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
-                lobbySeats = [];
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.status === "waiting") {
-                        lobbySeats.push({
-                            id: doc.id,
-                            name: data.hostName,
-                            bet: data.betAmount,
-                            isNPC: false
-                        });
-                    }
-                });
-                renderLobbyList(); // リストを描画
+    // ...中身はそのまま...
+    lobbySeats = [];
+    snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.status === "waiting") {
+            lobbySeats.push({
+                id: doc.id,
+                name: data.hostName,
+                bet: data.betAmount,
+                isNPC: false
             });
+        }
+    });
+    renderLobbyList(); 
+}, (error) => {
+    // 🌟 エラーキャッチを追加
+    console.error("ロビーデータの取得エラー:", error);
+    alert("データベースの読み取り権限がありません。Firebaseのルールを確認してください。");
+});
             
             // ▼▼ ここから追加 ▼▼
             // ホスト用の部屋監視（誰かが入ってきたかチェック）
