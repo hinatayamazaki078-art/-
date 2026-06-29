@@ -186,8 +186,12 @@
         .card-input-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
         .card-input-row input { width: 65px; font-size: 20px; text-align: center; padding: 5px; border: 2px solid #bdc3c7; border-radius: 6px; }
         
-        .battle-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 15px; }
-        .cpu-area, .player-area { background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        /* ▼ 変更: gap（要素間の隙間）を15pxから6pxにして中央に寄せる ▼ */
+        .battle-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+        
+        /* ▼ 変更: padding（内側の余白）を15pxから上下8px・左右12pxに薄くしてスリム化 ▼ */
+        .cpu-area, .player-area { background: white; padding: 8px 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        
         .score-board { text-align: center; font-size: 20px; font-weight: bold; margin: 10px 0; color: #2c3e50; background: #fff; padding: 8px; border-radius: 6px; }
         .hand-cards { display: flex; justify-content: center; gap: 8px; margin-top: 10px; flex-wrap: nowrap; }
         
@@ -203,7 +207,8 @@
         .cpu-area .card-back { background-color: #2c3e50; color: #e74c3c; }
         .player-area .card:not(.used):hover .card-inner { transform: rotateY(180deg) translateY(-8px); }
         
-        .battle-log { text-align: center; font-weight: bold; font-size: 16px; margin: 10px 0; min-height: 48px; color: #d35400; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        /* ▼ 変更: 文字サイズを小さく、上下マージンとパディング、最低限の高さを削って細くデザイン ▼ */
+        .battle-log { text-align: center; font-weight: bold; font-size: 14px; margin: 4px 0; min-height: 36px; color: #d35400; background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         .win-text { color: #27ae60; font-size: 18px; margin-top: 4px;}
         
         /* アバター一覧用スタイル */
