@@ -219,6 +219,12 @@
 </head>
 <body>
 
+    <audio id="battle-bgm" loop>
+    <source src="実際のファイル名.mp3" type="audio/mpeg">
+</audio>
+
+<div id="app-container">
+
 <div id="app-container">
 
     <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.8); justify-content:center; align-items:center;" onclick="closeCharacter()">
@@ -377,6 +383,8 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         if (unsubscribeLobby) { unsubscribeLobby(); unsubscribeLobby = null; }
         if (unsubscribeHost) { unsubscribeHost(); unsubscribeHost = null; }
 
+　　　　stopBGM();
+        
         showScreen('screen-home');
         updateCoinUI();
     }
@@ -801,6 +809,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     document.getElementById('battle-opponent-avatar').innerHTML = renderAvatarHtml(opponentAvatar);
 
                     renderHands();
+                    playBGM();
                     showScreen('screen-battle');
                     startBtn.innerText = "バトル開始！"; // ボタンの文字を元に戻す
                 }
@@ -823,9 +832,24 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById('battle-opponent-avatar').innerHTML = '🤖';
 
         renderHands();
+        playBGM();
         showScreen('screen-battle');
     }
 }
+    
+// ▼ 追加: BGMの再生と停止を管理する機能 ▼
+    function playBGM() {
+        const bgm = document.getElementById('battle-bgm');
+        bgm.volume = 0.4; // 音量調整 (0.0 〜 1.0)
+        bgm.play().catch(e => console.log("BGM再生エラー:", e));
+    }
+
+    function stopBGM() {
+        const bgm = document.getElementById('battle-bgm');
+        bgm.pause();
+        bgm.currentTime = 0; // 曲を最初に戻す
+    }
+    
     function renderHands() {
         const playerHandEl = document.getElementById('player-hand');
         const cpuHandEl = document.getElementById('cpu-hand');
