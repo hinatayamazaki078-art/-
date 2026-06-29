@@ -279,7 +279,7 @@
             <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #16a085, #1abc9c); color: white; margin-bottom: 15px;" onclick="goToShopScreen()">🛒 ネットショッピング</button>
             <button class="gacha-btn" style="width:100%;" onclick="playGacha()">💎 100コインでガチャを回す</button>
             <button class="change-avatar-btn" style="width:100%;" onclick="openAvatarList()">👕 アバターを変更する</button>
-            <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22;" onclick="goToBetSelectScreen()">🪑 席を探す (オンライン)</button>
+            <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22;" onclick="goToLobbyScreen()">🪑 席を探す (オンライン)</button>
             <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen(false)">⚔️ オフライン練習モード</button>
         </div>
     </div>
@@ -293,7 +293,7 @@
         </div>
         <div class="action-area">
             <button id="btn-lobby-entry" class="gacha-btn" style="background: linear-gradient(145deg, #2ecc71, #27ae60); color:white;" disabled onclick="handleLobbyAction('entry')">🚪 エントリー</button>
-            <button id="btn-lobby-challenge" class="battle-btn" style="background: linear-gradient(145deg, #e74c3c, #c0392b); color:white; border-color:#e74c3c;" disabled onclick="handleLobbyAction('challenge')">⚔️ 挑戦する</button>
+            <button style="background-color: #7f8c8d; margin-top: 10px;" onclick="goToLobbyScreen()">⬅️ エントリー一覧に戻る</button>
         </div>
         <button style="background-color: #7f8c8d; margin-top: 10px;" onclick="goToHome()">🏠 ホームに戻る</button>
     </div>
@@ -301,6 +301,7 @@
     <div id="screen-lobby" class="screen">
         <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">エントリー一覧</h2>
         <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">席を選んで挑戦、または他プレイヤーの参入を待ちます。</p>
+        <button class="gacha-btn" style="background: linear-gradient(145deg, #2ecc71, #27ae60); color:white; margin-bottom: 10px;" onclick="goToBetSelectScreen()">🚪 自分でエントリーする</button>
         <div class="lobby-list" id="lobby-list-container"></div>
         <button id="btn-lobby-back" style="background-color: #7f8c8d;" onclick="goToBetSelectScreen()">⬅️ 掛金選択に戻る</button>
     </div>
@@ -545,12 +546,13 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     // =========================================
     // 新規追加：掛金選択 & オンラインロビーロジック
     // =========================================
+    // ▼ 変更：挑戦ボタンの無効化処理を削除
     function goToBetSelectScreen() {
         if (matchingTimeout) clearTimeout(matchingTimeout);
         currentBet = 0;
         document.getElementById('selected-bet-display').innerText = '未選択';
         document.getElementById('btn-lobby-entry').disabled = true;
-        document.getElementById('btn-lobby-challenge').disabled = true;
+        // （btn-lobby-challenge の disabled 処理を削除）
         
         renderBetButtons();
         showScreen('screen-bet-select');
@@ -705,67 +707,66 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
     }
     
+    // ▼ 変更：挑戦ボタンの disabled 条件を撤廃し、タップ可能にする
     function renderLobbyList() {
-    const container = document.getElementById('lobby-list-container');
-    container.innerHTML = '';
+        const container = document.getElementById('lobby-list-container');
+        container.innerHTML = '';
 
-    if (lobbySeats.length === 0) {
-        container.innerHTML = '<div style="text-align:center; color:#7f8c8d;">現在、待機中のプレイヤーはいません。</div>';
-        return;
-    }
-
-    lobbySeats.forEach(seat => {
-        // 自分の作った部屋は「挑戦」ボタンを出さずに対戦待ち表示にする
-        const isSelf = seat.id === currentRoomId; 
-        let actionHtml = '';
-
-        if (isSelf) {
-            actionHtml = '<span style="color:#27ae60; font-weight:bold; font-size:13px;">対戦待ち...</span>';
-        } else {
-            const canAfford = coins >= seat.bet;
-            actionHtml = `<button class="lobby-join-btn" ${canAfford ? '' : 'disabled'} onclick="challengeSeat('${seat.id}', ${seat.bet})">挑戦する</button>`;
+        if (lobbySeats.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#7f8c8d;">現在、待機中のプレイヤーはいません。</div>';
+            return;
         }
 
-        container.innerHTML += `
-            <div class="lobby-item">
-                <div class="lobby-item-info">
-                    <span class="lobby-item-name">${seat.name}</span>
-                    <span class="lobby-item-bet">🪙 ${seat.bet.toLocaleString()}</span>
+        lobbySeats.forEach(seat => {
+            const isSelf = seat.id === currentRoomId; 
+            let actionHtml = '';
+
+            if (isSelf) {
+                actionHtml = '<span style="color:#27ae60; font-weight:bold; font-size:13px;">対戦待ち...</span>';
+            } else {
+                // 変更箇所：所持金に関わらずボタンは押せるようにする
+                actionHtml = `<button class="lobby-join-btn" onclick="challengeSeat('${seat.id}', ${seat.bet})">挑戦する</button>`;
+            }
+
+            container.innerHTML += `
+                <div class="lobby-item">
+                    <div class="lobby-item-info">
+                        <span class="lobby-item-name">${seat.name}</span>
+                        <span class="lobby-item-bet">🪙 ${seat.bet.toLocaleString()}</span>
+                    </div>
+                    <div>${actionHtml}</div>
                 </div>
-                <div>${actionHtml}</div>
-            </div>
-        `;
-    });
-}
-    async function challengeSeat(roomId, betAmount) {
-    if (coins < betAmount) {
-        alert("コイン不足のため挑戦できません！");
-        return;
+            `;
+        });
     }
-    if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
-        coins -= betAmount;
-        updateCoinUI();
-        isHost = false;
-        currentBet = betAmount;
-        currentRoomId = roomId; // 🌟
+    // ▼ 変更：コイン不足時のアラートメッセージを変更
+    async function challengeSeat(roomId, betAmount) {
+        if (coins < betAmount) {
+            alert("所持金が足りません");
+            return;
+        }
+        if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
+            coins -= betAmount;
+            updateCoinUI();
+            isHost = false;
+            currentBet = betAmount;
+            currentRoomId = roomId;
 
-        // 📝 変更点：対象の部屋のステータスを「対戦中」に更新（updateDoc）
-        try {
-            const roomRef = window.doc(window.db, "rooms", roomId);
-            await window.updateDoc(roomRef, {
-                status: "playing",
-                guestName: document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト',
-                guestAvatar: currentAvatar // 🌟【追加】自分のアバター情報を相手に送る
-            });
-            console.log("マッチング成立！");
-            
-            // 自分の画面をデッキ構築画面へ進める
-            goToBuildScreen(true);
-        } catch (e) {
-            alert("この席は既に埋まっているか、エラーが発生しました。");
+            try {
+                const roomRef = window.doc(window.db, "rooms", roomId);
+                await window.updateDoc(roomRef, {
+                    status: "playing",
+                    guestName: document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト',
+                    guestAvatar: currentAvatar
+                });
+                console.log("マッチング成立！");
+                
+                goToBuildScreen(true);
+            } catch (e) {
+                alert("この席は既に埋まっているか、エラーが発生しました。");
+            }
         }
     }
-}
     // 🌟 画像か絵文字かを判別して表示用のHTMLを作る関数
     function renderAvatarHtml(avatar) {
     if (!avatar) return '🤖';
@@ -1208,6 +1209,35 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }, 750);
     }
 
+    // ▼ 新規追加：ホーム画面から直接ロビーを開く処理
+    function goToLobbyScreen() {
+        showScreen('screen-lobby');
+        document.getElementById('btn-lobby-back').style.display = 'block';
+        
+        const container = document.getElementById('lobby-list-container');
+        container.innerHTML = '<div style="text-align:center; color:#7f8c8d;">部屋を探しています...</div>';
+
+        // すでに監視中なら一度解除する
+        if (unsubscribeLobby) unsubscribeLobby();
+
+        // "rooms" コレクションの更新をリアルタイムで監視
+        unsubscribeLobby = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
+            lobbySeats = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.status === "waiting") {
+                    lobbySeats.push({
+                        id: doc.id,
+                        name: data.hostName,
+                        bet: data.betAmount,
+                        isNPC: false
+                    });
+                }
+            });
+            renderLobbyList(); // 取ってきたデータで画面を描画
+        });
+    }
+    
     function updateScoreBoard() {
         document.getElementById('score-player').innerText = playerWins;
         document.getElementById('score-cpu').innerText = cpuWins;
