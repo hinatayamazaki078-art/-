@@ -962,45 +962,45 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 
     // 既存の nextTurn 関数を以下に差し替えてください
-    async function nextTurn() {
-        document.getElementById('battle-log').innerHTML = "<span>次のターンを準備中...</span>"; // 変更
-        document.getElementById('btn-next-turn').style.display = 'none';
-        
-        if (isOnlineBattle) {
-            // ① ホストが代表してFirebase上の「場に出たカード」をリセットする
-            if (isHost) {
-                try {
-                    const roomRef = window.doc(window.db, "rooms", currentRoomId);
-                    await window.updateDoc(roomRef, {
-                        hostCardIndex: null,
-                        guestCardIndex: null
-                    });
-                } catch(e) {
-                    console.error("ターンリセットエラー", e);
-                }
-            }
-            
-            // ② 🌟【重要】リセットされたことをFirebase経由で確認してから操作を許可する
+    // 修正版：nextTurn 関数
+async function nextTurn() {
+    document.getElementById('battle-log').innerHTML = "<span>次のターンを準備中...</span>";
+    document.getElementById('btn-next-turn').style.display = 'none';
+    
+    if (isOnlineBattle) {
+        // 【修正ポイント】ホストが代表するのではなく、各自が「自分のカードだけ」をリセットする
+        try {
             const roomRef = window.doc(window.db, "rooms", currentRoomId);
-            const unsub = window.onSnapshot(roomRef, (docSnap) => {
-                const data = docSnap.data();
-                if (data && data.hostCardIndex == null && data.guestCardIndex == null) {
-                    unsub(); // 監視ストップ
-                    isProcessingTurn = false;
-                    document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
-                    renderHands();
-                }
-            });
-
-        } else {
-            // オフラインの場合は今まで通り
-            setTimeout(() => {
+            if (isHost) {
+                await window.updateDoc(roomRef, { hostCardIndex: null });
+            } else {
+                await window.updateDoc(roomRef, { guestCardIndex: null });
+            }
+        } catch(e) {
+            console.error("ターンリセットエラー", e);
+        }
+        
+        // お互いのリセットが完了したか（両方が確実に null になったか）を確認してから操作を許可する
+        const roomRef = window.doc(window.db, "rooms", currentRoomId);
+        const unsub = window.onSnapshot(roomRef, (docSnap) => {
+            const data = docSnap.data();
+            if (data && data.hostCardIndex == null && data.guestCardIndex == null) {
+                unsub(); // 監視ストップ
                 isProcessingTurn = false;
                 document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
                 renderHands();
-            }, 500);
-        }
+            }
+        });
+
+    } else {
+        // オフラインの場合は今まで通り
+        setTimeout(() => {
+            isProcessingTurn = false;
+            document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
+            renderHands();
+        }, 500);
     }
+}
     </script>
 
 <script type="module">
