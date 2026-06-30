@@ -235,6 +235,34 @@
 
 <div id="app-container">
 
+    <!-- ▼ 新規追加: プロフィールカード用オーバーレイ ▼ -->
+    <div id="profile-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:110; background:rgba(0,0,0,0.85); flex-direction:column; justify-content:center; align-items:center; padding: 15px; box-sizing: border-box;">
+        
+        <!-- カード本体（画像を背景に指定） -->
+        <div style="position: relative; width: 100%; max-width: 380px; aspect-ratio: 1.5 / 1; background-image: url('プロフィールカード.jpg'); background-size: cover; background-position: center; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+
+            <!-- 1. アバター画像（丸枠にはめ込む） -->
+            <div style="position: absolute; top: 16%; left: 8.5%; width: 29.5%; aspect-ratio: 1 / 1; border-radius: 50%; overflow: hidden; display: flex; justify-content: center; align-items: flex-start;">
+                <div id="profile-avatar" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background-color: rgba(255,255,255,0.1);"></div>
+            </div>
+
+            <!-- 2. NAME -->
+            <div id="profile-name-text" style="position: absolute; top: 27%; left: 45%; width: 48%; height: 12%; display: flex; align-items: center; justify-content: center; color: #f1c40f; font-size: 15px; font-weight: bold; letter-spacing: 2px;"></div>
+
+            <!-- 3. 総資産額 -->
+            <div id="profile-assets-text" style="position: absolute; top: 51.5%; left: 53%; width: 40%; height: 12%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; font-weight: bold;"></div>
+
+            <!-- 4. PLAYER LEVEL -->
+            <div id="profile-level-text" style="position: absolute; top: 76%; left: 55%; width: 35%; height: 12%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: bold;"></div>
+        </div>
+
+        <!-- ボタンエリア -->
+        <div style="width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 10px; margin-top: 30px;">
+            <button onclick="closeProfileAndGoToAssets()" style="margin: 0; background: linear-gradient(145deg, #d4af37, #aa8c2c); color: #111; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">💼 資産装備画面へ</button>
+            <button onclick="closeProfile()" style="margin: 0; background-color: #7f8c8d;">閉じる</button>
+        </div>
+    </div>
+
     <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.8); justify-content:center; align-items:center;" onclick="closeCharacter()">
         <div id="gacha-result-avatar" style="font-size: 180px; animation: fadeIn 0.5s;"></div>
     </div>
@@ -252,7 +280,7 @@
             <div class="header-left">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span id="player-name" style="cursor: pointer; text-decoration: underline; text-underline-offset: 3px;" onclick="changePlayerName()">👑 ゲスト</span>
-                    <span style="cursor: pointer; font-size: 18px;" onclick="goToAssetsScreen()">💼</span>
+                    <span style="cursor: pointer; font-size: 18px;" onclick="openProfile()">💼</span>
                 </div>
                 <span id="player-level">Lv: 1</span>
             </div>
@@ -1256,6 +1284,49 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     function openShopMenu() {
     showScreen('screen-shop-menu');
 }
+    
+    // =========================================
+    // 新規追加：プロフィールカードロジック
+    // =========================================
+    function openProfile() {
+        // 1. 総資産額を計算（装備中の資産の合計）
+        let totalValue = 0;
+        for (let i = 0; i < 10; i++) {
+            if (equippedAssets[i]) {
+                totalValue += equippedAssets[i].price;
+            }
+        }
+
+        // 2. プレイヤー名とレベルを取得
+        const name = document.getElementById('player-name').innerText.replace('👑 ', '');
+        const levelText = document.getElementById('player-level').innerText.replace('Lv: ', '');
+
+        // 3. テキストをカードに反映
+        document.getElementById('profile-name-text').innerText = name;
+        document.getElementById('profile-assets-text').innerText = '🪙 ' + totalValue.toLocaleString();
+        document.getElementById('profile-level-text').innerText = levelText;
+
+        // 4. アバターをカードに反映（顔を中心に拡大）
+        const avatarDiv = document.getElementById('profile-avatar');
+        if (currentAvatar.includes('.png')) {
+            // object-positionで少し上寄りにし、scaleで顔をズームさせます
+            avatarDiv.innerHTML = `<img src="${currentAvatar}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 10%; transform: scale(1.6);">`;
+        } else {
+            avatarDiv.innerHTML = `<div style="font-size: 50px;">${currentAvatar}</div>`;
+        }
+
+        // オーバーレイを表示
+        document.getElementById('profile-overlay').style.display = 'flex';
+    }
+
+    function closeProfile() {
+        document.getElementById('profile-overlay').style.display = 'none';
+    }
+
+    function closeProfileAndGoToAssets() {
+        closeProfile();
+        goToAssetsScreen();
+    }
     
     function updateScoreBoard() {
         document.getElementById('score-player').innerText = playerWins;
