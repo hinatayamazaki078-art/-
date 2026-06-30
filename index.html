@@ -235,6 +235,16 @@
 
 <div id="app-container">
 
+    <!-- ▼ 新規追加: AFK報酬用オーバーレイ ▼ -->
+<div id="afk-reward-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:200; background:rgba(0,0,0,0.9); flex-direction:column; justify-content:center; align-items:center; padding: 20px; box-sizing: border-box; text-align: center;">
+    <h2 style="color: #f1c40f; font-size: 24px; margin-bottom: 10px;">おかえりなさい！</h2>
+    <p style="color: #fff; font-size: 16px; margin-bottom: 20px;">ゲームを閉じている間にコインが貯まりました。</p>
+    <div style="font-size: 60px; margin-bottom: 20px;">🪙</div>
+    <div style="color: #2ecc71; font-size: 28px; font-weight: bold; margin-bottom: 30px;">+<span id="afk-coin-amount">0</span> コイン</div>
+    <!-- 回収ボタンを押すと collectAfkRewards() が呼ばれ、既存のBGMが流れる -->
+    <button onclick="collectAfkRewards()" style="background: linear-gradient(145deg, #d4af37, #aa8c2c); color: #111; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.6); font-size: 18px; padding: 15px 40px; border-radius: 8px;">💰 回収する</button>
+</div>
+
     <!-- ▼ 新規追加: プロフィールカード用オーバーレイ ▼ -->
     <div id="profile-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:110; background:rgba(0,0,0,0.85); flex-direction:column; justify-content:center; align-items:center; padding: 15px; box-sizing: border-box;">
         
@@ -480,8 +490,9 @@ let equippedItem = null; // 現在装備しているアイテム（例: "glasses
     // 最初から2つのキャラを持たせておきます
     let unlockedAvatars = ['キャラ1.png', 'キャラ2.png']; 
     let currentAvatar = 'キャラ1.png';       
-    let coins = 100; // 初期所持金を100に変更（テスト用）
-
+    // ブラウザに保存されたコインがあれば読み込み、なければ100をセット
+let coins = parseInt(localStorage.getItem('playerCoins')) || 100; 
+let afkEarnedCoins = 0; // AFK報酬計算用の変数
     // オンラインバトル関連の管理状態
     let currentBet = 0;           // 選択中/勝負中の掛金
     let isOnlineBattle = false;   // オンライン戦（掛金戦）かどうかのフラグ
@@ -1336,6 +1347,62 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById('profile-overlay').style.display = 'flex';
     }
 
+    // =========================================
+// 新規追加：AFK（放置）報酬ロジック
+// =========================================
+
+// 画面読み込み時にAFK報酬をチェック
+window.addEventListener('DOMContentLoaded', () => {
+    updateCoinUI(); // 起動時に所持金表示を更新
+    checkAfkRewards();
+});
+
+// ページを閉じる時や、スマホで別タブ・アプリに移動した時に時間を保存する
+window.addEventListener('beforeunload', saveGameState);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveGameState();
+});
+
+function saveGameState() {
+    localStorage.setItem('lastPlayTime', Date.now());
+    localStorage.setItem('playerCoins', coins);
+}
+
+// 報酬を計算して画面を表示する関数
+function checkAfkRewards() {
+    const lastPlayTime = localStorage.getItem('lastPlayTime');
+    
+    if (lastPlayTime) {
+        const now = Date.now();
+        const diffMs = now - parseInt(lastPlayTime, 10);
+        const diffMinutes = Math.floor(diffMs / (1000 * 60)); // ミリ秒を分に変換
+
+        // 1分以上経過していれば報酬画面を表示
+        if (diffMinutes >= 1) {
+            afkEarnedCoins = diffMinutes; // 1分につき1コイン
+            document.getElementById('afk-coin-amount').innerText = afkEarnedCoins.toLocaleString();
+            document.getElementById('afk-reward-overlay').style.display = 'flex';
+        }
+    } else {
+        // 初回プレイ時は現在時刻だけ保存しておく
+        saveGameState();
+    }
+}
+
+// 回収ボタンを押した時の処理
+function collectAfkRewards() {
+    coins += afkEarnedCoins;
+    afkEarnedCoins = 0;
+    updateCoinUI();
+    saveGameState(); // 回収後の状態をすぐにセーブ
+    
+    // オーバーレイを閉じる
+    document.getElementById('afk-reward-overlay').style.display = 'none';
+
+    // 既存のBGMを再生する関数を呼び出す
+    playBGM();
+}
+    
     function closeProfile() {
         document.getElementById('profile-overlay').style.display = 'none';
     }
