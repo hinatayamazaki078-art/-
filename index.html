@@ -68,7 +68,7 @@
             background: rgba(26, 18, 11, 0.85);
             border: 2px solid #d4af37;
             color: #e6c662;
-            /* ▼ ここを変更：上12px、右95px(ボタン用スペース)、下12px、左15px ▼ */
+            /* ▼ ここを変更：上12px、right95px(ボタン用スペース)、下12px、左15px ▼ */
             padding: 12px 95px 12px 15px; 
             border-radius: 10px;
             display: flex;
@@ -98,16 +98,16 @@
         }
         .coin-icon { 
             margin-right: 4px; 
-            font-size: 16px; /* 元の18pxから小さく変更[cite: 1] */
+            font-size: 16px; /* 元の18pxから小さく変更 */
         }
         .coin-plus-btn {
             background: linear-gradient(145deg, #2ecc71, #27ae60);
             color: white;
             border-radius: 50%;
-            width: 18px; height: 18px; /* 元の20pxから小さく変更[cite: 1] */
+            width: 18px; height: 18px; /* 元の20pxから小さく変更 */
             display: flex; justify-content: center; align-items: center;
             margin-left: 6px; 
-            font-size: 12px; /* 元の14pxから小さく変更[cite: 1] */
+            font-size: 12px; /* 元の14pxから小さく変更 */
             cursor: pointer;
             border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
@@ -544,7 +544,7 @@
     // =========================================
 // 新規追加：プレイヤーIDとデータベース登録
 // =========================================
-// ブラウザに保存されたIDがあれば読み込み、なければ新規作成
+// ブラウザに保存されたIDがあれば読み込み、 lazy新規作成
 let myPlayerId = localStorage.getItem('myPlayerId');
 if (!myPlayerId) {
     // ランダムな英数字のIDを生成 (例: player_x8a9b2...)
@@ -646,12 +646,48 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById(screenId).classList.add('active');
     }
 
-    function goToHome() {
+    // =========================================
+    // 【追加修正】エントリーキャンセル＆払い戻し共通関数
+    // =========================================
+    async function cancelEntry() {
+        const lobbyScreen = document.getElementById('screen-lobby');
+        // ロビー画面が表示されており、自分がホストで、まだ賭け金が設定されている場合に実行
+        if (lobbyScreen && lobbyScreen.classList.contains('active') && isHost && currentBet > 0) {
+            coins += currentBet; // コインを返還
+            updateCoinUI();
+            saveGameState(); // ローカルストレージを同期
+
+            const roomId = currentRoomId;
+            // ローカル変数の各種フラグを即座にリセット
+            isHost = false;
+            isOnlineBattle = false;
+            currentBet = 0;
+            currentRoomId = null;
+
+            if (roomId) {
+                try {
+                    const roomRef = window.doc(window.db, "rooms", roomId);
+                    await window.updateDoc(roomRef, {
+                        status: "cancelled"
+                    });
+                    console.log("エントリーをキャンセルし、Firebase上の部屋を無効化しました。");
+                } catch (e) {
+                    console.error("Firebase上の部屋のキャンセルに失敗:", e);
+                }
+            }
+        }
+    }
+
+    // 【修正】関数をasync化し、キャンセル処理を追加
+    async function goToHome() {
         if (matchingTimeout) clearTimeout(matchingTimeout);
         if (unsubscribeLobby) { unsubscribeLobby(); unsubscribeLobby = null; }
         if (unsubscribeHost) { unsubscribeHost(); unsubscribeHost = null; }
 
-　　　　stopBGM();
+        // エントリー中の場合は払い戻し＆キャンセルを執行
+        await cancelEntry();
+
+        stopBGM();
         
         showScreen('screen-home');
         updateCoinUI();
@@ -738,13 +774,16 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     // =========================================
     // 新規追加：掛金選択 & オンラインロビーロジック
     // =========================================
-    // ▼ 変更：挑戦ボタンの無効化処理を削除
-    function goToBetSelectScreen() {
+    // 【修正】関数をasync化し、戻る際のエントリー解除処理を組み込み
+    async function goToBetSelectScreen() {
         if (matchingTimeout) clearTimeout(matchingTimeout);
+        
+        // ロビーから掛金選択に戻る際も、エントリー状態なら安全に払い戻す
+        await cancelEntry();
+
         currentBet = 0;
         document.getElementById('selected-bet-display').innerText = '未選択';
         document.getElementById('btn-lobby-entry').disabled = true;
-        // （btn-lobby-challenge の disabled 処理を削除）
         
         renderBetButtons();
         showScreen('screen-bet-select');
@@ -774,7 +813,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById('btn-lobby-challenge').disabled = false;
     }
 
-    // NPC生成機能を削除（本来はここでサーバーから実際のプレイヤーリストを取得します）
+    // NPC生成機能を削除
     function generateNPCSeats() {
         lobbySeats = [];
     }
@@ -786,9 +825,10 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 
     if (mode === 'entry') {
-        // 【ステップ2】エントリー：Firebaseに部屋データを送信して作成する
+        // エントリー：Firebaseに部屋データを送信して作成する
         coins -= currentBet;
         updateCoinUI();
+        saveGameState();
         isOnlineBattle = true;
         isHost = true;
 
@@ -803,6 +843,14 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                 status: "waiting", // 「待機中」ステータス
                 createdAt: new Date()
             });
+
+            // 【追加補強】部屋構築完了までの僅かなタイムラグの間に戻るボタンを押されていた場合の救済策
+            if (!isHost) {
+                const roomRef = window.doc(window.db, "rooms", docRef.id);
+                await window.updateDoc(roomRef, { status: "cancelled" });
+                return;
+            }
+
             currentRoomId = docRef.id; // 作成された部屋のIDを保持
             console.log("部屋を作成しました。ID: ", currentRoomId);
 
@@ -811,27 +859,24 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             
             if (unsubscribeLobby) unsubscribeLobby();
             unsubscribeLobby = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
-    // ...中身はそのまま...
-    lobbySeats = [];
-    snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.status === "waiting") {
-            lobbySeats.push({
-                id: doc.id,
-                name: data.hostName,
-                bet: data.betAmount,
-                isNPC: false
+                lobbySeats = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.status === "waiting") {
+                        lobbySeats.push({
+                            id: doc.id,
+                            name: data.hostName,
+                            bet: data.betAmount,
+                            isNPC: false
+                        });
+                    }
+                });
+                renderLobbyList(); 
+            }, (error) => {
+                console.error("ロビーデータの取得エラー:", error);
+                alert("データベースの読み取り権限がありません。Firebaseのルールを確認してください。");
             });
-        }
-    });
-    renderLobbyList(); 
-}, (error) => {
-    // 🌟 エラーキャッチを追加
-    console.error("ロビーデータの取得エラー:", error);
-    alert("データベースの読み取り権限がありません。Firebaseのルールを確認してください。");
-});
             
-            // ▼▼ ここから追加 ▼▼
             // ホスト用の部屋監視（誰かが入ってきたかチェック）
             const roomRef = window.doc(window.db, "rooms", currentRoomId);
             unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
@@ -843,7 +888,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     goToBuildScreen(true); // 自分（ホスト）もデッキ構築画面へ進む
                 }
             });
-            // ▲▲ ここまで追加 ▲▲
 
         } catch (error) {
             console.error("部屋の作成に失敗:", error);
@@ -851,7 +895,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
 
     } else if (mode === 'challenge') {
-        // 【ステップ3】挑戦：Firebaseから待機中の部屋をリアルタイム取得する
+        // 挑戦：Firebaseから待機中の部屋をリアルタイム取得する
         showScreen('screen-lobby');
         document.getElementById('btn-lobby-back').style.display = 'block';
         
@@ -866,7 +910,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             lobbySeats = [];
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                // "waiting"（待機中）の部屋だけをリストアップする
                 if (data.status === "waiting") {
                     lobbySeats.push({
                         id: doc.id,
@@ -882,25 +925,18 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 }
     // プレイヤー名を変更する機能
     function changePlayerName() {
-        // 現在の名前を取得して「👑 」を取り除く
         const currentFull = document.getElementById('player-name').innerText;
         const currentName = currentFull.replace('👑 ', '');
         
-        // 入力ウィンドウを表示
         let newName = prompt("新しい名前を入力してください（最大10文字）", currentName);
         
-        // キャンセルされず、空欄でもない場合のみ名前を更新
         if (newName !== null && newName.trim() !== "") {
-            // 文字数を最大10文字に制限（レイアウト崩れ防止）
             newName = newName.trim().substring(0, 10);
-            
-            // 👑マークを再度つけて画面に反映
             document.getElementById('player-name').innerText = '👑 ' + newName;
             saveMyProfile();
         }
     }
     
-    // ▼ 変更：挑戦ボタンの disabled 条件を撤廃し、タップ可能にする
     function renderLobbyList() {
         const container = document.getElementById('lobby-list-container');
         container.innerHTML = '';
@@ -917,7 +953,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             if (isSelf) {
                 actionHtml = '<span style="color:#27ae60; font-weight:bold; font-size:13px;">対戦待ち...</span>';
             } else {
-                // 変更箇所：所持金に関わらずボタンは押せるようにする
                 actionHtml = `<button class="lobby-join-btn" onclick="challengeSeat('${seat.id}', ${seat.bet})">挑戦する</button>`;
             }
 
@@ -932,7 +967,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             `;
         });
     }
-    // ▼ 変更：コイン不足時のアラートメッセージを変更
+
     async function challengeSeat(roomId, betAmount) {
         if (coins < betAmount) {
             alert("所持金が足りません");
@@ -941,6 +976,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
             coins -= betAmount;
             updateCoinUI();
+            saveGameState();
             isHost = false;
             currentBet = betAmount;
             currentRoomId = roomId;
@@ -960,12 +996,10 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             }
         }
     }
-    // 🌟 画像か絵文字かを判別して表示用のHTMLを作る関数
+
     function renderAvatarHtml(avatar) {
     if (!avatar) return '🤖';
     if (avatar.includes('.png')) {
-        // 横160px、縦120pxの見えない四角い枠（overflow: hidden）を作ります。
-        // その中でキャラクターを1.7倍に拡大（scale）し、頭（top）を基準に固定します。
         return `
             <div style="width: 160px; height: 120px; overflow: hidden; display: inline-flex; justify-content: center; align-items: flex-start;">
                 <img src="${avatar}" style="width: 100%; height: 100%; object-fit: contain; transform: scale(1.7); transform-origin: center top;">
@@ -976,19 +1010,17 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 }
     
-    // 資産画面の見た目を最新の状態に更新する
     function renderAssetsScreen() {
-        // 1. 10個の装備スロットの描画
         const slotsContainer = document.getElementById('asset-slots');
         slotsContainer.innerHTML = '';
         
-        let totalValue = 0; // 総資産額を計算する用の変数
+        let totalValue = 0; 
 
         for (let i = 0; i < 10; i++) {
             const item = equippedAssets[i];
             
             if (item) {
-                totalValue += item.price; // 装備しているアイテムの金額を加算
+                totalValue += item.price; 
                 slotsContainer.innerHTML += `
                     <div class="asset-slot equipped" onclick="unequipAsset(${i})" title="${item.name} (タップで外す)">
                         ${item.icon}
@@ -997,16 +1029,13 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             } else {
                 slotsContainer.innerHTML += `
                     <div class="asset-slot" onclick="alert('下の「所持している資産」からアイテムをタップするとここに装備できます！')">
-                        <!-- 空っぽのスロット -->
                     </div>
                 `;
             }
         }
 
-        // 計算した総資産額を画面に反映
         document.getElementById('total-asset-value').innerText = totalValue.toLocaleString();
 
-        // 2. 所持している資産リストの描画
         const listContainer = document.getElementById('owned-assets-list');
         listContainer.innerHTML = '';
 
@@ -1026,14 +1055,11 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         });
     }
 
-    // 資産をカバンからスロットへ「装備」する
     function equipAsset(assetId) {
-        // カバン（所持リスト）から対象アイテムを探す
         const assetIndex = ownedAssets.findIndex(a => a.id === assetId);
         if (assetIndex === -1) return;
         const asset = ownedAssets[assetIndex];
 
-        // 10個の装備枠の中で、空いている（nullの）一番最初のスロットを探す
         const emptySlotIndex = equippedAssets.indexOf(null);
         
         if (emptySlotIndex === -1) {
@@ -1041,34 +1067,27 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             return;
         }
 
-        // 空き枠にアイテムを入れ、カバンから取り除く
         equippedAssets[emptySlotIndex] = asset;
         ownedAssets.splice(assetIndex, 1);
 
-        // 画面をリフレッシュ
         renderAssetsScreen();
     }
 
-    // 資産をスロットから外してカバンへ「戻す」
     function unequipAsset(slotIndex) {
         const asset = equippedAssets[slotIndex];
         if (!asset) return;
 
-        // スロットを空っぽにして、カバンに戻す
         equippedAssets[slotIndex] = null;
         ownedAssets.push(asset);
 
-        // 画面をリフレッシュ
         renderAssetsScreen();
     }
 
-    // 資産画面へ移動（★ここを書き換え！）
     function goToAssetsScreen() {
-        renderAssetsScreen(); // 最新の装備状況・総資産額を計算して描画
+        renderAssetsScreen(); 
         showScreen('screen-assets');
     }
 
-    // ショップ画面のアイテムを画面に表示する
     function renderShopScreen() {
         const container = document.getElementById('shop-items');
         container.innerHTML = '';
@@ -1081,21 +1100,19 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     <div style="color: #f1c40f; font-weight: bold; font-size: 13px; background: #1a1a1a; padding: 2px 8px; border-radius: 12px; width: fit-content; margin: 0 auto;">
                         🪙 ${item.price.toLocaleString()}
                     </div>
-                    <!-- 商品内容は未実装のため、ボタンは無効化(disabled) -->
                     <button style="margin-bottom: 0; padding: 6px; font-size: 12px; background-color: #bdc3c7; color: #7f8c8d;" disabled>未実装</button>
                 </div>
             `;
         });
     }
 
-    // ショップ画面へ移動（ここを書き換え！）
     function goToShopScreen() {
-        renderShopScreen(); // 画面を開くときに最新の品揃えを描画
+        renderShopScreen(); 
         showScreen('screen-shop');
     }
     
     function goToBuildScreen(isOnline) {
-        isOnlineBattle = isOnline; // オンラインバトルフラグを設定
+        isOnlineBattle = isOnline; 
         showScreen('screen-build');
         renderCardInputs();
         updateCost();
@@ -1114,18 +1131,13 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
     }
 
-    // ショップの品揃えを新しくする（10分おきに発動）
     function updateShopProducts() {
-        // 10種類の商品をランダムにシャッフルして「商品が変わった感」を演出
         shopCurrentItems = [...baseShopItems].sort(() => Math.random() - 0.5);
-        
-        // もし現在ショップ画面を開いていたら、その場で見た目をリフレッシュする
         if (document.getElementById('screen-shop').classList.contains('active')) {
             renderShopScreen();
         }
     }
 
-    // 10分ごとのカウントダウンタイマーを動かす
     function startShopTimer() {
         if (shopTimerInterval) clearInterval(shopTimerInterval);
         
@@ -1134,27 +1146,22 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
             
-            // 次の10分区切り（例: 20分、30分など）までの残り時間を計算
             const nextTargetMinute = Math.ceil((minutes + 0.01) / 10) * 10;
             const totalRemainingSeconds = ((nextTargetMinute - minutes) * 60) - seconds;
             
-            // 残り「分」と「秒」に変換
             const displayMin = Math.floor(totalRemainingSeconds / 60);
             const displaySec = totalRemainingSeconds % 60;
             
-            // 画面のタイマー表示を更新
             const timerEl = document.getElementById('shop-update-timer');
             if (timerEl) {
                 timerEl.innerText = `${String(displayMin).padStart(2, '0')}:${String(displaySec).padStart(2, '0')}`;
             }
             
-            // ちょうど10分区切りのタイミング（残り0秒）になったら商品を更新
             if (totalRemainingSeconds <= 0) {
                 updateShopProducts();
             }
         }
         
-        // 最初の一回を実行し、以降1秒ごとに時計を刻む
         updateShopProducts();
         tick();
         shopTimerInterval = setInterval(tick, 1000);
@@ -1204,7 +1211,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     isProcessingTurn = false;
 
     if (isOnlineBattle) {
-        // ▼ オンライン対戦の場合：Firebaseにデッキを送信して待機
         const startBtn = document.getElementById('btn-start-battle');
         startBtn.innerText = "相手を待っています...";
         startBtn.disabled = true;
@@ -1212,7 +1218,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         try {
             const roomRef = window.doc(window.db, "rooms", currentRoomId);
             
-            // 自分がホストかゲストかで保存する場所を分ける
             if (isHost) {
                 await window.updateDoc(roomRef, {
                     hostDeck: playerDeck,
@@ -1225,13 +1230,11 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                 });
             }
 
-            // お互いの準備（Ready）が完了するのを監視
             const unsubscribeReady = window.onSnapshot(roomRef, (docSnap) => {
                 const data = docSnap.data();
                 if (data && data.hostReady && data.guestReady) {
-                    unsubscribeReady(); // 監視をストップ
+                    unsubscribeReady(); 
 
-                    // 相手のデッキを取得してセット（変数名はcpuDeckを流用します）
                     cpuDeck = isHost ? data.guestDeck : data.hostDeck;
                     
                     document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
@@ -1244,7 +1247,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     renderHands();
                     playBGM();
                     showScreen('screen-battle');
-                    startBtn.innerText = "バトル開始！"; // ボタンの文字を元に戻す
+                    startBtn.innerText = "バトル開始！"; 
                 }
             });
 
@@ -1256,7 +1259,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
 
     } else {
-        // ▼ オフライン（練習モード）の場合：従来通りCPUのデッキを自動生成して即開始
         cpuDeck = generateCPUDeck();
         document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
         document.getElementById('btn-next-turn').style.display = 'none';
@@ -1270,17 +1272,16 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 }
     
-// ▼ 追加: BGMの再生と停止を管理する機能 ▼
     function playBGM() {
         const bgm = document.getElementById('battle-bgm');
-        bgm.volume = 0.4; // 音量調整 (0.0 〜 1.0)
+        bgm.volume = 0.4; 
         bgm.play().catch(e => console.log("BGM再生エラー:", e));
     }
 
     function stopBGM() {
         const bgm = document.getElementById('battle-bgm');
         bgm.pause();
-        bgm.currentTime = 0; // 曲を最初に戻す
+        bgm.currentTime = 0; 
     }
     
     function renderHands() {
@@ -1318,7 +1319,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         });
     }
 
-    // 既存の playCard 関数を以下に丸ごと差し替えてください
     async function playCard(playerCardIndex) {
         if (isProcessingTurn) return;
         isProcessingTurn = true;
@@ -1328,27 +1328,22 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         playerCardEl.style.transform = "translateY(-20px)";
 
         if (isOnlineBattle) {
-            // ▼ オンラインモードの場合：自分のカードをFirebaseに送り、相手を待つ
             document.getElementById('battle-log').innerHTML = "<span>相手の選択を待っています...</span>";
             
             try {
                 const roomRef = window.doc(window.db, "rooms", currentRoomId);
                 
-                // 自分が選んだカードの位置（インデックス）を保存
                 if (isHost) {
                     await window.updateDoc(roomRef, { hostCardIndex: playerCardIndex });
                 } else {
                     await window.updateDoc(roomRef, { guestCardIndex: playerCardIndex });
                 }
 
-                // お互いがカードを出したか監視
                 const unsubscribeTurn = window.onSnapshot(roomRef, (docSnap) => {
                     const data = docSnap.data();
-                    // 両方のカードが出揃った（nullやundefinedではない）ら
                     if (data && data.hostCardIndex != null && data.guestCardIndex != null) {
-                        unsubscribeTurn(); // 監視ストップ
+                        unsubscribeTurn(); 
 
-                        // 相手が出したカードのインデックスを取得して、勝敗判定へ進む
                         const opponentCardIndex = isHost ? data.guestCardIndex : data.hostCardIndex;
                         resolveTurn(playerCardIndex, opponentCardIndex);
                     }
@@ -1359,14 +1354,12 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             }
 
         } else {
-            // ▼ オフライン（練習モード）の場合：今まで通りすぐCPUがカードを出す
             const availableCpuIndices = cpuDeck.map((p, i) => p !== null ? i : -1).filter(i => i !== -1);
             const cpuCardIndex = availableCpuIndices[Math.floor(Math.random() * availableCpuIndices.length)];
             resolveTurn(playerCardIndex, cpuCardIndex);
         }
     }
 
-    // ▼ 新規追加：勝敗判定とアニメーションを行う専用の関数
     function resolveTurn(playerCardIndex, cpuCardIndex) {
         const playerPower = playerDeck[playerCardIndex];
         const cpuPower = cpuDeck[cpuCardIndex];
@@ -1402,7 +1395,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }, 750);
     }
 
-    // ▼ 新規追加：ホーム画面から直接ロビーを開く処理
     function goToLobbyScreen() {
         showScreen('screen-lobby');
         document.getElementById('btn-lobby-back').style.display = 'block';
@@ -1410,10 +1402,8 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         const container = document.getElementById('lobby-list-container');
         container.innerHTML = '<div style="text-align:center; color:#7f8c8d;">部屋を探しています...</div>';
 
-        // すでに監視中なら一度解除する
         if (unsubscribeLobby) unsubscribeLobby();
 
-        // "rooms" コレクションの更新をリアルタイムで監視
         unsubscribeLobby = window.onSnapshot(window.collection(window.db, "rooms"), (snapshot) => {
             lobbySeats = [];
             snapshot.forEach((doc) => {
@@ -1427,20 +1417,15 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     });
                 }
             });
-            renderLobbyList(); // 取ってきたデータで画面を描画
+            renderLobbyList(); 
         });
     }
     
-    // ▼ 新規追加：ショップメニュー画面を開く処理
     function openShopMenu() {
     showScreen('screen-shop-menu');
 }
     
-    // =========================================
-    // 新規追加：プロフィールカードロジック
-    // =========================================
     function openProfile() {
-        // 1. 総資産額を計算（装備中の資産の合計）
         let totalValue = 0;
         for (let i = 0; i < 10; i++) {
             if (equippedAssets[i]) {
@@ -1448,48 +1433,37 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             }
         }
 
-        // 2. プレイヤー名とレベルを取得
         const name = document.getElementById('player-name').innerText.replace('👑 ', '');
         const levelText = document.getElementById('player-level').innerText.replace('Lv: ', '');
 
-        // 3. テキストをカードに反映
         document.getElementById('profile-name-text').innerText = name;
         document.getElementById('profile-assets-text').innerText = '🪙 ' + totalValue.toLocaleString();
         document.getElementById('profile-level-text').innerText = levelText;
         document.getElementById('profile-id-text').innerText = "ID: " + myPlayerId;
 
-        // 4. アバターをカードに反映（顔を中心に拡大）
         const avatarDiv = document.getElementById('profile-avatar');
         if (currentAvatar.includes('.png')) {
-            // object-positionで少し上寄りにし、scaleで顔をズームさせます
             avatarDiv.innerHTML = `<img src="${currentAvatar}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 10%; transform: scale(1.6);">`;
         } else {
             avatarDiv.innerHTML = `<div style="font-size: 50px;">${currentAvatar}</div>`;
         }
 
-        // オーバーレイを表示
         document.getElementById('profile-overlay').style.display = 'flex';
     }
 
-    // =========================================
-// 新規追加：AFK（放置）報酬ロジック
-// =========================================
-
-// 画面読み込み時にAFK報酬をチェック
 window.addEventListener('DOMContentLoaded', () => {
-    updateCoinUI(); // 起動時に所持金表示を更新
+    updateCoinUI(); 
     checkAfkRewards();
     setTimeout(saveMyProfile, 1000);
     setTimeout(listenForInvites, 1500);
 });
 
-// ページを閉じる時や、スマホで別タブ・アプリに移動した時に時間を保存する
 window.addEventListener('beforeunload', saveGameState);
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-        saveGameState(); // 画面を隠した時に時間を保存
+        saveGameState(); 
     } else if (document.visibilityState === 'visible') {
-        checkAfkRewards(); // ★ 画面に戻ってきた時にAFK報酬をチェック
+        checkAfkRewards(); 
     }
 });
 
@@ -1498,9 +1472,7 @@ function saveGameState() {
     localStorage.setItem('playerCoins', coins);
 }
 
-// 報酬を計算して画面を表示する関数
 function checkAfkRewards() {
-    // 既に報酬画面が出ている場合は、再計算しないようにスキップする
     if (document.getElementById('afk-reward-overlay').style.display === 'flex') {
         return;
     }
@@ -1510,31 +1482,25 @@ function checkAfkRewards() {
     if (lastPlayTime) {
         const now = Date.now();
         const diffMs = now - parseInt(lastPlayTime, 10);
-        const diffMinutes = Math.floor(diffMs / (1000 * 60)); // ミリ秒を分に変換
+        const diffMinutes = Math.floor(diffMs / (1000 * 60)); 
 
-        // ▼ 変更：「1分以上」という条件 (if) を無くし、無条件で実行するようにしました
         afkEarnedCoins = diffMinutes; 
         
         document.getElementById('afk-coin-amount').innerText = afkEarnedCoins.toLocaleString();
         document.getElementById('afk-reward-overlay').style.display = 'flex';
         
     } else {
-        // 初回プレイ時は現在時刻だけ保存しておく
         saveGameState();
     }
 }
 
-// 回収ボタンを押した時の処理
 function collectAfkRewards() {
     coins += afkEarnedCoins;
     afkEarnedCoins = 0;
     updateCoinUI();
-    saveGameState(); // 回収後の状態をすぐにセーブ
+    saveGameState(); 
     
-    // オーバーレイを閉じる
     document.getElementById('afk-reward-overlay').style.display = 'none';
-
-    // 既存のBGMを再生する関数を呼び出す
     playBGM();
 }
     
@@ -1552,36 +1518,26 @@ function collectAfkRewards() {
         const overlay = document.getElementById("item-cutin-overlay");
         const content = document.getElementById("item-cutin-content");
         
-        // 1. 演出画面を表示
         overlay.style.display = "flex";
         
-        // 2. 少し遅れて「ドンッ！」と拡大表示する（アニメーション）
         setTimeout(() => {
             content.style.transform = "scale(1)";
         }, 50);
 
-        // 3. 2秒後に演出を消して、実際の効果を発動
         setTimeout(() => {
-            content.style.transform = "scale(0)"; // 縮小して消える
+            content.style.transform = "scale(0)"; 
             setTimeout(() => {
                 overlay.style.display = "none";
-                
-                // 【ここに相手の手札を1枚公開する処理を書く】
-                // 例: 相手の手札配列からランダムに1枚選び、裏面の画像を表面に変更する処理など
                 alert("相手の手札が1枚公開されました！（※ここに公開処理を入れます）");
-                
-                // 装備を解除して次の試合に持ち越さないようにする
                 equippedItem = null;
                 document.getElementById("check-equip-glasses").checked = false;
 
-                // 演出と処理が終わったら、ゲームの進行（次の処理）へ進む
                 if (callback) callback();
                 
             }, 300);
-        }, 2000); // 2秒間表示
+        }, 2000); 
         
     } else {
-        // アイテムを装備していなければすぐに次の処理へ進む
         if (callback) callback();
     }
 }
@@ -1592,37 +1548,26 @@ function collectAfkRewards() {
         return;
     }
 
-    // ※ 'coins' は現在お使いの所持コイン変数名に合わせてください
     if (coins >= 500) {
         coins -= 500;
         hasDetectiveGlasses = true;
         
         alert("「探偵の眼鏡」を獲得しました！");
         
-        // ボタンを購入済みに変更
         const buyBtn = document.getElementById("btn-buy-glasses");
         buyBtn.innerText = "購入済み";
         buyBtn.style.background = "#7f8c8d";
         buyBtn.disabled = true;
 
-        // ※ここでコインの画面表示を更新する関数やセーブ関数を呼んでください
-        // updateCoinDisplay();
     } else {
         alert("コインが足りません！");
     }
 }
     
-    // =========================================
-// 新規追加：フレンド機能＆通知ロジック
-// =========================================
-
-// ※テスト用のダミーフレンドデータです
-// フレンドリストのIDを保存する配列（ブラウザに保存）
 let myFriendIds = JSON.parse(localStorage.getItem('myFriendIds')) || [];
-let myFriends = []; // ここにFirebaseから取得した実際のデータが入ります
+let myFriends = []; 
 let selectedFriend = null;
 
-// 1. フレンド検索＆追加機能
 async function searchFriend() {
     const searchInput = document.getElementById('friend-search-input').value.trim();
     if (!searchInput) {
@@ -1635,19 +1580,17 @@ async function searchFriend() {
     }
 
     try {
-        // Firebaseのusersコレクションから該当のIDを探す
         const userRef = window.doc(window.db, "users", searchInput);
         const docSnap = await window.getDoc(userRef);
 
         if (docSnap.exists()) {
             const friendData = docSnap.data();
             if (confirm(`「${friendData.name}」さんを見つけました！フレンドに追加しますか？`)) {
-                // まだリストにいなければ追加
                 if (!myFriendIds.includes(searchInput)) {
                     myFriendIds.push(searchInput);
                     localStorage.setItem('myFriendIds', JSON.stringify(myFriendIds));
                     alert("フレンドに追加しました！");
-                    openFriendMenu(); // リストを更新して表示
+                    openFriendMenu(); 
                 } else {
                     alert("すでにフレンドに登録されています！");
                 }
@@ -1661,13 +1604,12 @@ async function searchFriend() {
     }
 }
 
-// 2. フレンド画面を開き、最新データを取得して表示する
 async function openFriendMenu() {
     document.getElementById('friend-overlay').style.display = 'flex';
     const container = document.getElementById('friend-list-container');
     container.innerHTML = '<div style="color:#7f8c8d; text-align:center; margin-top:20px;">データを読み込み中...</div>';
 
-    myFriends = []; // 一旦リセット
+    myFriends = []; 
 
     if (myFriendIds.length === 0) {
         container.innerHTML = '<div style="color:#7f8c8d; text-align:center; font-size:14px; margin-top:20px;">まだフレンドがいません。<br>IDを検索して追加してみましょう！</div>';
@@ -1675,7 +1617,6 @@ async function openFriendMenu() {
     }
 
     try {
-        // 登録されているフレンドの最新情報をFirebaseから一人ずつ取得
         for (const fid of myFriendIds) {
             const userRef = window.doc(window.db, "users", fid);
             const docSnap = await window.getDoc(userRef);
@@ -1689,18 +1630,16 @@ async function openFriendMenu() {
                 });
             }
         }
-        renderFriendList(); // 取得し終わったら描画する
+        renderFriendList(); 
     } catch (e) {
         console.error("フレンド取得エラー:", e);
         container.innerHTML = '<div style="color:#e74c3c; text-align:center; margin-top:20px;">通信エラーが発生しました。</div>';
     }
 }
-// 2. フレンド画面を閉じる
 function closeFriendMenu() {
     document.getElementById('friend-overlay').style.display = 'none';
 }
 
-// 3. フレンドリストを描画する
 function renderFriendList() {
     const container = document.getElementById('friend-list-container');
     container.innerHTML = '';
@@ -1723,7 +1662,6 @@ function renderFriendList() {
     });
 }
 
-// 4. アクションメニューを開く
 function openFriendActionModal(friendId, friendName) {
     selectedFriend = { id: friendId, name: friendName };
     document.getElementById('action-target-name').innerText = friendName;
@@ -1734,24 +1672,20 @@ function closeFriendActionModal() {
     document.getElementById('friend-action-modal').style.display = 'none';
 }
 
-// 5. バトルに誘う（自分が誘う側）
-// 5. バトルに誘う（自分が誘う側）
 async function sendBattleInvite() {
     if (!selectedFriend) return;
     
-    // UIをいったん閉じてメッセージを出す
     alert(`${selectedFriend.name} にバトルの招待を送りました！相手の返答を待ちます...`);
     closeFriendActionModal();
     
     try {
         const myName = document.getElementById('player-name').innerText.replace('👑 ', '');
         
-        // ① 先にフレンド対戦用の「部屋」を作る（掛金は0）
         const roomRef = await window.addDoc(window.collection(window.db, "rooms"), {
             hostName: myName,
             hostAvatar: currentAvatar,
             guestName: selectedFriend.name,
-            betAmount: 0, // フレンド戦は報酬なし
+            betAmount: 0, 
             status: "friend_match",
             createdAt: new Date().getTime()
         });
@@ -1760,26 +1694,24 @@ async function sendBattleInvite() {
         isOnlineBattle = true;
         isHost = true;
 
-        // ② 相手のID宛てに「招待状」を送る
         const inviteRef = await window.addDoc(window.collection(window.db, "invites"), {
             fromId: myPlayerId,
             fromName: myName,
             toId: selectedFriend.id,
             roomId: currentRoomId,
-            status: "pending", // 返答待ち
+            status: "pending", 
             timestamp: new Date().getTime()
         });
 
-        // ③ 相手が「OK」か「NO」を押すまで、この招待状のステータスを監視する
         const unsubscribe = window.onSnapshot(inviteRef, (docSnap) => {
             const data = docSnap.data();
             if (data && data.status === "accepted") {
-                unsubscribe(); // 監視ストップ
+                unsubscribe(); 
                 alert(`${selectedFriend.name} が対戦を承諾しました！バトル準備へ進みます。`);
                 currentBet = 0;
-                goToBuildScreen(true); // ホストとしてデッキ構築へ
+                goToBuildScreen(true); 
             } else if (data && data.status === "declined") {
-                unsubscribe(); // 監視ストップ
+                unsubscribe(); 
                 alert(`${selectedFriend.name} にバトルを断られました...`);
             }
         });
@@ -1788,15 +1720,10 @@ async function sendBattleInvite() {
         alert("通信エラーが発生しました。");
     }
 }
-// =========================================
-// リアルタイム通知受信ロジック（相手から誘われた側の動き）
-// =========================================
-let currentInviteId = null; // 届いている招待状のID
-let pendingRoomId = null;   // 招待された対戦部屋のID
+let currentInviteId = null; 
+let pendingRoomId = null;   
 
-// 常に自分宛ての招待状を見張る関数
 function listenForInvites() {
-    // 「自分宛て(toId)」かつ「返答待ち(pending)」の招待状を探すクエリ
     const q = window.query(
         window.collection(window.db, "invites"),
         window.where("toId", "==", myPlayerId),
@@ -1808,11 +1735,9 @@ function listenForInvites() {
             if (change.type === "added") {
                 const data = change.doc.data();
                 
-                // ※リロードした時に昔の通知が来ないよう、15秒以上前の招待は無視する
                 const now = new Date().getTime();
                 if (now - data.timestamp > 15000) return;
 
-                // 招待データを受け取ってバナーを表示
                 currentInviteId = change.doc.id;
                 pendingRoomId = data.roomId;
                 document.getElementById('invite-banner-text').innerText = `${data.fromName} さんからバトルに誘われています！`;
@@ -1822,18 +1747,15 @@ function listenForInvites() {
     });
 }
 
-// OK（対戦する）を押したとき
 async function acceptBattleInvite() {
     document.getElementById('battle-invite-banner').style.display = 'none';
     if (!currentInviteId) return;
 
     try {
-        // ① 招待状のステータスを「承諾」にして相手に知らせる
         await window.updateDoc(window.doc(window.db, "invites", currentInviteId), {
             status: "accepted"
         });
 
-        // ② 対戦部屋に自分の情報を書き込む
         const myName = document.getElementById('player-name').innerText.replace('👑 ', '');
         await window.updateDoc(window.doc(window.db, "rooms", pendingRoomId), {
             guestAvatar: currentAvatar,
@@ -1843,21 +1765,19 @@ async function acceptBattleInvite() {
         alert("招待を承諾しました！バトル準備画面へ移動します。");
         currentBet = 0;
         isOnlineBattle = true;
-        isHost = false; // 誘われた側なのでゲスト
+        isHost = false; 
         currentRoomId = pendingRoomId;
-        goToBuildScreen(true); // ゲストとしてデッキ構築へ
+        goToBuildScreen(true); 
     } catch (e) {
         console.error("承諾エラー:", e);
     }
 }
 
-// NO（断る）を押したとき
 async function declineBattleInvite() {
     document.getElementById('battle-invite-banner').style.display = 'none';
     if (!currentInviteId) return;
 
     try {
-        // 招待状のステータスを「拒否」にして相手に知らせる
         await window.updateDoc(window.doc(window.db, "invites", currentInviteId), {
             status: "declined"
         });
@@ -1871,7 +1791,6 @@ async function declineBattleInvite() {
         document.getElementById('score-cpu').innerText = cpuWins;
     }
 
-    // オンライン掛金戦＆フレンド戦の報酬ロジックを統合
     function checkGameEnd() {
         const logEl = document.getElementById('battle-log');
         const returnBtn = document.getElementById('btn-return-home');
@@ -1899,8 +1818,7 @@ async function declineBattleInvite() {
             
             if (isDraw) {
                 if (isOnlineBattle) {
-                    coins += currentBet; // 引き分けなら掛金を返還
-                    // ▼ 変更：掛金が0（フレンド戦）なら専用メッセージにする
+                    coins += currentBet; 
                     if (currentBet === 0) {
                         logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！ (フレンド対戦) 🤝</div>`;
                     } else {
@@ -1911,21 +1829,19 @@ async function declineBattleInvite() {
                 }
             } else if (isPlayerWin) {
                 if (isOnlineBattle) {
-                    const payout = currentBet * 2; // 勝てば倍獲得
+                    const payout = currentBet * 2; 
                     coins += payout;
-                    // ▼ 変更：掛金が0（フレンド戦）なら専用メッセージにする
                     if (currentBet === 0) {
                         logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! フレンドに勝利しました！ 🎉</div>`;
                     } else {
                         logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 掛金の倍 [ ${payout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
                     }
                 } else {
-                    coins += 10; // オフラインは10コイン
+                    coins += 10; 
                     logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 10コイン獲得！ 🎉</div>`;
                 }
             } else {
                 if (isOnlineBattle) {
-                    // ▼ 変更：掛金が0（フレンド戦）なら専用メッセージにする
                     if (currentBet === 0) {
                         logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... フレンドに敗北しました 💀</div>`;
                     } else {
@@ -1936,29 +1852,25 @@ async function declineBattleInvite() {
                 }
             }
             
-            isOnlineBattle = false; // フラグリセット
-            updateCoinUI(); // ▼ 追加：コインの表示を更新
+            isOnlineBattle = false; 
+            updateCoinUI(); 
 
             setTimeout(() => {
                 goToHome();
             }, 3000);
             
         } else {
-            // ▼ ボタンを表示せず、2.5秒待ってから自動で次のターンへ進む
             setTimeout(() => {
                 nextTurn();
             }, 2500);
         }
     }
 
-    // 既存の nextTurn 関数を以下に差し替えてください
-    // 修正版：nextTurn 関数
 async function nextTurn() {
     document.getElementById('battle-log').innerHTML = "<span>次のターンを準備中...</span>";
     document.getElementById('btn-next-turn').style.display = 'none';
     
     if (isOnlineBattle) {
-        // 【修正ポイント】ホストが代表するのではなく、各自が「自分のカードだけ」をリセットする
         try {
             const roomRef = window.doc(window.db, "rooms", currentRoomId);
             if (isHost) {
@@ -1970,12 +1882,11 @@ async function nextTurn() {
             console.error("ターンリセットエラー", e);
         }
         
-        // お互いのリセットが完了したか（両方が確実に null になったか）を確認してから操作を許可する
         const roomRef = window.doc(window.db, "rooms", currentRoomId);
         const unsub = window.onSnapshot(roomRef, (docSnap) => {
             const data = docSnap.data();
             if (data && data.hostCardIndex == null && data.guestCardIndex == null) {
-                unsub(); // 監視ストップ
+                unsub(); 
                 isProcessingTurn = false;
                 document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
                 renderHands();
@@ -1983,7 +1894,6 @@ async function nextTurn() {
         });
 
     } else {
-        // オフラインの場合は今まで通り
         setTimeout(() => {
             isProcessingTurn = false;
             document.getElementById('battle-log').innerHTML = "<span>カードを1枚選んでください</span>";
@@ -1994,11 +1904,9 @@ async function nextTurn() {
     </script>
 
 <script type="module">
-    // Firebaseのプログラムを読み込む
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    // 取得した正しい firebaseConfig
     const firebaseConfig = {
         apiKey: "AIzaSyBgPo28dabejPrKRD-UabxQKrTZCjmdnuU",
         authDomain: "casinocardbattle.firebaseapp.com",
@@ -2009,11 +1917,9 @@ async function nextTurn() {
         measurementId: "G-V0Y00XXG0D"
     };
 
-    // Firebaseとデータベース(Firestore)の起動
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 他のスクリプトからデータベースを操作できるように公開する
     window.db = db;
     window.collection = collection;
     window.addDoc = addDoc;
@@ -2021,9 +1927,9 @@ async function nextTurn() {
     window.doc = doc;
     window.updateDoc = updateDoc;
     window.setDoc = setDoc;
-    window.getDoc = getDoc;   // ←追加！
-window.getDocs = getDocs; // ←追加！
-window.query = query;     // ←追加！
+    window.getDoc = getDoc;   
+window.getDocs = getDocs; 
+window.query = query;     
 window.where = where;
     
     console.log("🔥 Firebase 準備完了！");
@@ -2031,7 +1937,5 @@ window.where = where;
     startShopTimer();
 
 </script>
-<!-- ▲▲ Firebase の設定ここまで ▲▲ -->
-
 </body>
 </html>
