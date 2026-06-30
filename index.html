@@ -1864,7 +1864,7 @@ async function declineBattleInvite() {
         document.getElementById('score-cpu').innerText = cpuWins;
     }
 
-    // オンライン掛金戦の報酬ロジックを統合
+    // オンライン掛金戦＆フレンド戦の報酬ロジックを統合
     function checkGameEnd() {
         const logEl = document.getElementById('battle-log');
         const returnBtn = document.getElementById('btn-return-home');
@@ -1893,7 +1893,12 @@ async function declineBattleInvite() {
             if (isDraw) {
                 if (isOnlineBattle) {
                     coins += currentBet; // 引き分けなら掛金を返還
-                    logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！掛金 ${currentBet.toLocaleString()}コイン が返還されました 🤝</div>`;
+                    // ▼ 変更：掛金が0（フレンド戦）なら専用メッセージにする
+                    if (currentBet === 0) {
+                        logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！ (フレンド対戦) 🤝</div>`;
+                    } else {
+                        logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！掛金 ${currentBet.toLocaleString()}コイン が返還されました 🤝</div>`;
+                    }
                 } else {
                     logEl.innerHTML += `<div style="color:#7f8c8d; font-size:18px; margin-top:4px;">🤝 ドローゲーム！ 🤝</div>`;
                 }
@@ -1901,26 +1906,38 @@ async function declineBattleInvite() {
                 if (isOnlineBattle) {
                     const payout = currentBet * 2; // 勝てば倍獲得
                     coins += payout;
-                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 掛金の倍 [ ${payout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+                    // ▼ 変更：掛金が0（フレンド戦）なら専用メッセージにする
+                    if (currentBet === 0) {
+                        logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! フレンドに勝利しました！ 🎉</div>`;
+                    } else {
+                        logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 掛金の倍 [ ${payout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+                    }
                 } else {
-                    coins += 10;
+                    coins += 10; // オフラインは10コイン
                     logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 10コイン獲得！ 🎉</div>`;
                 }
             } else {
                 if (isOnlineBattle) {
-                    logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... 掛金没収 (払い戻し0) 💀</div>`;
+                    // ▼ 変更：掛金が0（フレンド戦）なら専用メッセージにする
+                    if (currentBet === 0) {
+                        logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... フレンドに敗北しました 💀</div>`;
+                    } else {
+                        logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... 掛金没収 (払い戻し0) 💀</div>`;
+                    }
                 } else {
                     logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 MATCH LOSE... 💀</div>`;
                 }
             }
+            
             isOnlineBattle = false; // フラグリセット
+            updateCoinUI(); // ▼ 追加：コインの表示を更新
 
-setTimeout(() => {
+            setTimeout(() => {
                 goToHome();
             }, 3000);
             
         } else {
-            // ▼ ボタンを表示せず、2.5秒（2500ミリ秒）待ってから自動で次のターンへ進む
+            // ▼ ボタンを表示せず、2.5秒待ってから自動で次のターンへ進む
             setTimeout(() => {
                 nextTurn();
             }, 2500);
