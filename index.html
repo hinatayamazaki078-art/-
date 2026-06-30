@@ -533,6 +533,37 @@
 </div>
 
 <script>
+
+    // =========================================
+// 新規追加：プレイヤーIDとデータベース登録
+// =========================================
+// ブラウザに保存されたIDがあれば読み込み、なければ新規作成
+let myPlayerId = localStorage.getItem('myPlayerId');
+if (!myPlayerId) {
+    // ランダムな英数字のIDを生成 (例: player_x8a9b2...)
+    myPlayerId = 'player_' + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('myPlayerId', myPlayerId);
+}
+
+// 自分のプロフィール（名前・アバター・状態）をFirebaseに保存する関数
+async function saveMyProfile() {
+    try {
+        const userRef = window.doc(window.db, "users", myPlayerId);
+        const pName = document.getElementById('player-name').innerText.replace('👑 ', '');
+        
+        // setDoc({ merge: true }) でデータを新規作成 または 上書き更新
+        await window.setDoc(userRef, {
+            name: pName,
+            avatar: currentAvatar,
+            isOnline: true,
+            lastActive: new Date().toISOString() // 最後にログインした時間
+        }, { merge: true });
+        
+        console.log("プロフィールをサーバーに保存しました！ ID:", myPlayerId);
+    } catch(e) {
+        console.error("プロフィールの保存に失敗:", e);
+    }
+}
     // データとステータス
     const avatars = ['キャラ1.png', 'キャラ2.png', 'キャラ8.png', 'キャラ4.png', 'キャラ6.png', 'キャラ7.png', 'キャラ9.png', 'キャラ10.png', 'キャラ11.png', 'キャラ12.png', 'キャラ13.png', 'キャラ14.png'];
     const betAmounts = [10, 30, 50, 100, 300, 500, 1000, 3000, 10000, 50000, 100000, 500000, 1000000];
@@ -1974,37 +2005,6 @@ window.where = where;
     console.log("🔥 Firebase 準備完了！");
 
     startShopTimer();
-
-// =========================================
-// 新規追加：プレイヤーIDとデータベース登録
-// =========================================
-// ブラウザに保存されたIDがあれば読み込み、なければ新規作成
-let myPlayerId = localStorage.getItem('myPlayerId');
-if (!myPlayerId) {
-    // ランダムな英数字のIDを生成 (例: player_x8a9b2...)
-    myPlayerId = 'player_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('myPlayerId', myPlayerId);
-}
-
-// 自分のプロフィール（名前・アバター・状態）をFirebaseに保存する関数
-async function saveMyProfile() {
-    try {
-        const userRef = window.doc(window.db, "users", myPlayerId);
-        const pName = document.getElementById('player-name').innerText.replace('👑 ', '');
-        
-        // setDoc({ merge: true }) でデータを新規作成 または 上書き更新
-        await window.setDoc(userRef, {
-            name: pName,
-            avatar: currentAvatar,
-            isOnline: true,
-            lastActive: new Date().toISOString() // 最後にログインした時間
-        }, { merge: true });
-        
-        console.log("プロフィールをサーバーに保存しました！ ID:", myPlayerId);
-    } catch(e) {
-        console.error("プロフィールの保存に失敗:", e);
-    }
-}
 
 </script>
 <!-- ▲▲ Firebase の設定ここまで ▲▲ -->
