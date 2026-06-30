@@ -68,7 +68,8 @@
             background: rgba(26, 18, 11, 0.85);
             border: 2px solid #d4af37;
             color: #e6c662;
-            padding: 12px 15px;
+            /* ▼ ここを変更：上12px、右95px(ボタン用スペース)、下12px、左15px ▼ */
+            padding: 12px 95px 12px 15px; 
             border-radius: 10px;
             display: flex;
             justify-content: space-between;
@@ -88,12 +89,12 @@
             background: rgba(0, 0, 0, 0.7);
             border: 1px solid #d4af37;
             border-radius: 20px;
-            padding: 3px 6px 3px 10px; /* 全体的に余白を薄くしてスリム化 */
+            padding: 3px 6px 3px 10px;
             color: #f1c40f;
             font-weight: bold;
-            font-size: 14px; /* 元の16pxから小さく変更 */
+            font-size: 14px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
-            margin-right: 95px; /* フレンドボタンを避けるために左に85px移動 */
+            /* margin-right: 85px; ← これを削除！ */
         }
         .coin-icon { 
             margin-right: 4px; 
