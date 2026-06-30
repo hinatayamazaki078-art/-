@@ -269,11 +269,6 @@
             <img src="キャラ1.png" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom; transform: scale(1.1); transform-origin: center bottom;">
         </div>
 
-        <!-- 3. ガチャ結果テキスト (空いたスペースの下の方に配置) -->
-        <div class="avatar-area" style="position: relative; z-index: 10; justify-content: flex-end; padding-bottom: 20px;">
-            <p id="gacha-result" style="display: none;">カジノへようこそ！</p>
-        </div>
-
         <!-- 4. ボタンエリア (手前に配置してクリックできるようにする) -->
         <div style="position: relative; z-index: 10;">
             <div style="text-align: center; margin-bottom: 15px;">
@@ -499,9 +494,8 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 
         if (!unlockedAvatars.includes(newAvatar)) {
             unlockedAvatars.push(newAvatar);
-            document.getElementById('gacha-result').innerText = `✨ 新しいアバター「${newAvatar}」をゲット！`;
         } else {
-            document.getElementById('gacha-result').innerText = `✨ 「${newAvatar}」が出た！（すでに持っています）`;
+            // elseの中身が空になるので、elseごと削除しても構いません
         }
 
         const resultAvatarDiv = document.getElementById('gacha-result-avatar');
