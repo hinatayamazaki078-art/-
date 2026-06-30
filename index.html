@@ -298,7 +298,7 @@
     <h2 style="color:#f1c40f; text-align:center; margin-top:10px;">フレンド</h2>
     <div class="friend-search-bar">
         <input type="text" id="friend-search-input" placeholder="プレイヤー名で検索...">
-        <button style="margin:0; padding:10px 15px; font-size:14px;" onclick="alert('検索機能はデータベース連携後に動作します')">検索</button>
+        <button style="margin:0; padding:10px 15px; font-size:14px;" onclick="searchFriend()">検索</button>
     </div>
     <div class="friend-list" id="friend-list-container">
         </div>
@@ -358,6 +358,8 @@
             <!-- 盾マークの上に重なるように位置とサイズをピンポイントで調整 -->
             <div id="profile-level-text" style="position: absolute; top: 74%; left: 40.5%; width: 10%; height: 13%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 2px #000;"></div>
         </div>
+
+        <div id="profile-id-text" style="position: absolute; top: 88%; left: 0%; width: 100%; text-align: center; color: #bdc3c7; font-size: 11px; letter-spacing: 1px;">ID: 取得中...</div>
 
         <!-- ボタンエリア -->
         <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; margin-top: 30px;">
@@ -688,6 +690,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
 
         closeAvatarList();
+        saveMyProfile();
     }
     function closeAvatarList() {
         document.getElementById('avatar-list-overlay').style.display = 'none';
@@ -855,6 +858,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             
             // 👑マークを再度つけて画面に反映
             document.getElementById('player-name').innerText = '👑 ' + newName;
+            saveMyProfile();
         }
     }
     
@@ -1414,6 +1418,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById('profile-name-text').innerText = name;
         document.getElementById('profile-assets-text').innerText = '🪙 ' + totalValue.toLocaleString();
         document.getElementById('profile-level-text').innerText = levelText;
+        document.getElementById('profile-id-text').innerText = "ID: " + myPlayerId;
 
         // 4. アバターをカードに反映（顔を中心に拡大）
         const avatarDiv = document.getElementById('profile-avatar');
@@ -1436,6 +1441,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 window.addEventListener('DOMContentLoaded', () => {
     updateCoinUI(); // 起動時に所持金表示を更新
     checkAfkRewards();
+    setTimeout(saveMyProfile, 1000);
 });
 
 // ページを閉じる時や、スマホで別タブ・アプリに移動した時に時間を保存する
@@ -1572,18 +1578,84 @@ function collectAfkRewards() {
 // =========================================
 
 // ※テスト用のダミーフレンドデータです
-let myFriends = [
-    { id: "f1", name: "サトシ", avatar: "キャラ2.png", isOnline: true },
-    { id: "f2", name: "シロナ", avatar: "キャラ8.png", isOnline: false }
-];
-let selectedFriend = null; // 現在アクションメニューを開いているフレンド
+// フレンドリストのIDを保存する配列（ブラウザに保存）
+let myFriendIds = JSON.parse(localStorage.getItem('myFriendIds')) || [];
+let myFriends = []; // ここにFirebaseから取得した実際のデータが入ります
+let selectedFriend = null;
 
-// 1. フレンド画面を開く
-function openFriendMenu() {
-    renderFriendList();
-    document.getElementById('friend-overlay').style.display = 'flex';
+// 1. フレンド検索＆追加機能
+async function searchFriend() {
+    const searchInput = document.getElementById('friend-search-input').value.trim();
+    if (!searchInput) {
+        alert("プレイヤーIDを入力してください！");
+        return;
+    }
+    if (searchInput === myPlayerId) {
+        alert("自分自身は検索できません！");
+        return;
+    }
+
+    try {
+        // Firebaseのusersコレクションから該当のIDを探す
+        const userRef = window.doc(window.db, "users", searchInput);
+        const docSnap = await window.getDoc(userRef);
+
+        if (docSnap.exists()) {
+            const friendData = docSnap.data();
+            if (confirm(`「${friendData.name}」さんを見つけました！フレンドに追加しますか？`)) {
+                // まだリストにいなければ追加
+                if (!myFriendIds.includes(searchInput)) {
+                    myFriendIds.push(searchInput);
+                    localStorage.setItem('myFriendIds', JSON.stringify(myFriendIds));
+                    alert("フレンドに追加しました！");
+                    openFriendMenu(); // リストを更新して表示
+                } else {
+                    alert("すでにフレンドに登録されています！");
+                }
+            }
+        } else {
+            alert("指定されたIDのプレイヤーは見つかりませんでした。\n「player_〇〇〇」と正確に入力してください。");
+        }
+    } catch (error) {
+        console.error("検索エラー:", error);
+        alert("検索中にエラーが発生しました。");
+    }
 }
 
+// 2. フレンド画面を開き、最新データを取得して表示する
+async function openFriendMenu() {
+    document.getElementById('friend-overlay').style.display = 'flex';
+    const container = document.getElementById('friend-list-container');
+    container.innerHTML = '<div style="color:#7f8c8d; text-align:center; margin-top:20px;">データを読み込み中...</div>';
+
+    myFriends = []; // 一旦リセット
+
+    if (myFriendIds.length === 0) {
+        container.innerHTML = '<div style="color:#7f8c8d; text-align:center; font-size:14px; margin-top:20px;">まだフレンドがいません。<br>IDを検索して追加してみましょう！</div>';
+        return;
+    }
+
+    try {
+        // 登録されているフレンドの最新情報をFirebaseから一人ずつ取得
+        for (const fid of myFriendIds) {
+            const userRef = window.doc(window.db, "users", fid);
+            const docSnap = await window.getDoc(userRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                myFriends.push({
+                    id: fid,
+                    name: data.name,
+                    avatar: data.avatar,
+                    isOnline: data.isOnline
+                });
+            }
+        }
+        renderFriendList(); // 取得し終わったら描画する
+    } catch (e) {
+        console.error("フレンド取得エラー:", e);
+        container.innerHTML = '<div style="color:#e74c3c; text-align:center; margin-top:20px;">通信エラーが発生しました。</div>';
+    }
+}
 // 2. フレンド画面を閉じる
 function closeFriendMenu() {
     document.getElementById('friend-overlay').style.display = 'none';
@@ -1775,7 +1847,7 @@ async function nextTurn() {
 <script type="module">
     // Firebaseのプログラムを読み込む
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
     // 取得した正しい firebaseConfig
     const firebaseConfig = {
@@ -1799,10 +1871,47 @@ async function nextTurn() {
     window.onSnapshot = onSnapshot;
     window.doc = doc;
     window.updateDoc = updateDoc;
+    window.setDoc = setDoc;
+    window.getDoc = getDoc;   // ←追加！
+window.getDocs = getDocs; // ←追加！
+window.query = query;     // ←追加！
+window.where = where;
     
     console.log("🔥 Firebase 準備完了！");
 
     startShopTimer();
+
+// =========================================
+// 新規追加：プレイヤーIDとデータベース登録
+// =========================================
+// ブラウザに保存されたIDがあれば読み込み、なければ新規作成
+let myPlayerId = localStorage.getItem('myPlayerId');
+if (!myPlayerId) {
+    // ランダムな英数字のIDを生成 (例: player_x8a9b2...)
+    myPlayerId = 'player_' + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('myPlayerId', myPlayerId);
+}
+
+// 自分のプロフィール（名前・アバター・状態）をFirebaseに保存する関数
+async function saveMyProfile() {
+    try {
+        const userRef = window.doc(window.db, "users", myPlayerId);
+        const pName = document.getElementById('player-name').innerText.replace('👑 ', '');
+        
+        // setDoc({ merge: true }) でデータを新規作成 または 上書き更新
+        await window.setDoc(userRef, {
+            name: pName,
+            avatar: currentAvatar,
+            isOnline: true,
+            lastActive: new Date().toISOString() // 最後にログインした時間
+        }, { merge: true });
+        
+        console.log("プロフィールをサーバーに保存しました！ ID:", myPlayerId);
+    } catch(e) {
+        console.error("プロフィールの保存に失敗:", e);
+    }
+}
+
 </script>
 <!-- ▲▲ Firebase の設定ここまで ▲▲ -->
 
