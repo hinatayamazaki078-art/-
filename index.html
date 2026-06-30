@@ -1360,7 +1360,11 @@ window.addEventListener('DOMContentLoaded', () => {
 // ページを閉じる時や、スマホで別タブ・アプリに移動した時に時間を保存する
 window.addEventListener('beforeunload', saveGameState);
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') saveGameState();
+    if (document.visibilityState === 'hidden') {
+        saveGameState(); // 画面を隠した時に時間を保存
+    } else if (document.visibilityState === 'visible') {
+        checkAfkRewards(); // ★ 画面に戻ってきた時にAFK報酬をチェック
+    }
 });
 
 function saveGameState() {
@@ -1370,6 +1374,10 @@ function saveGameState() {
 
 // 報酬を計算して画面を表示する関数
 function checkAfkRewards() {
+    // ★ 既に報酬画面が出ている場合は、再計算しないようにスキップする
+    if (document.getElementById('afk-reward-overlay').style.display === 'flex') {
+        return;
+    }
     const lastPlayTime = localStorage.getItem('lastPlayTime');
     
     if (lastPlayTime) {
