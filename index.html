@@ -1477,7 +1477,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 
 // 画面読み込み時にAFK報酬をチェック
 window.addEventListener('DOMContentLoaded', () => {
-    loadGameState();
     updateCoinUI(); // 起動時に所持金表示を更新
     checkAfkRewards();
     setTimeout(saveMyProfile, 1000);
@@ -1497,51 +1496,9 @@ document.addEventListener('visibilitychange', () => {
 function saveGameState() {
     localStorage.setItem('lastPlayTime', Date.now());
     localStorage.setItem('playerCoins', coins);
-    // 追加：アバターや資産、アイテムの情報を文字列にして保存
-    localStorage.setItem('unlockedAvatars', JSON.stringify(unlockedAvatars));
-    localStorage.setItem('currentAvatar', currentAvatar);
-    localStorage.setItem('ownedAssets', JSON.stringify(ownedAssets));
-    localStorage.setItem('equippedAssets', JSON.stringify(equippedAssets));
-    localStorage.setItem('hasDetectiveGlasses', hasDetectiveGlasses);
-    console.log("ゲーム状態をセーブしました");
 }
 
-    function loadGameState() {
-    // 1. コインの読み込み
-    coins = parseInt(localStorage.getItem('playerCoins')) || 100;
-    updateCoinUI();
-
-    // 2. 解放済みアバターの読み込み
-    const savedAvatars = localStorage.getItem('unlockedAvatars');
-    if (savedAvatars) unlockedAvatars = JSON.parse(savedAvatars);
-
-    // 3. 現在のアバターの読み込みと反映
-    const savedCurrentAvatar = localStorage.getItem('currentAvatar');
-    if (savedCurrentAvatar) {
-        currentAvatar = savedCurrentAvatar;
-        // ホーム画面の見た目を更新
-        const displayDiv = document.getElementById('avatar-display');
-        if (currentAvatar.includes('.png')) {
-            displayDiv.innerHTML = `<img src="${currentAvatar}" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom; transform: scale(1.1); transform-origin: center bottom;">`;
-        } else {
-            displayDiv.innerHTML = `<div style="font-size: 150px; display:flex; justify-content:center; align-items:center; height:100%; text-shadow: 0px 4px 15px rgba(0,0,0,0.8);">${currentAvatar}</div>`;
-        }
-    }
-
-    // 4. 所持資産・装備資産の読み込み
-    const savedOwnedAssets = localStorage.getItem('ownedAssets');
-    if (savedOwnedAssets) ownedAssets = JSON.parse(savedOwnedAssets);
-
-    const savedEquippedAssets = localStorage.getItem('equippedAssets');
-    if (savedEquippedAssets) equippedAssets = JSON.parse(savedEquippedAssets);
-    
-    // 5. 特殊アイテム（探偵の眼鏡）の読み込み
-    hasDetectiveGlasses = localStorage.getItem('hasDetectiveGlasses') === 'true';
-
-    console.log("セーブデータをロードしました");
-}
-    
-    // 報酬を計算して画面を表示する関数
+// 報酬を計算して画面を表示する関数
 function checkAfkRewards() {
     // 既に報酬画面が出ている場合は、再計算しないようにスキップする
     if (document.getElementById('afk-reward-overlay').style.display === 'flex') {
@@ -1908,6 +1865,54 @@ async function declineBattleInvite() {
         console.error("拒否エラー:", e);
     }
 }
+    
+    // 1. ゲームのステータスを一括管理するオブジェクト
+let gameState = {
+    name: "プレイヤー1",
+    avatar: "default.png",
+    coins: 100,
+    assets: 500
+};
+
+// 2. 画面の表示（UI）を最新のデータに更新する関数
+function updateUI() {
+    // それぞれの要素のID名は、ご自身のHTMLに合わせて変更してください
+    if(document.getElementById('player-name')) {
+        document.getElementById('player-name').textContent = gameState.name;
+    }
+    if(document.getElementById('coin-amount')) {
+        document.getElementById('coin-amount').textContent = gameState.coins;
+    }
+    if(document.getElementById('asset-amount')) {
+        document.getElementById('asset-amount').textContent = gameState.assets;
+    }
+    if(document.getElementById('avatar-img')) {
+        document.getElementById('avatar-img').src = gameState.avatar;
+    }
+}
+
+// 3. オートセーブ関数（ローカルストレージに保存）
+function autoSave() {
+    localStorage.setItem('my_game_save', JSON.stringify(gameState));
+    console.log("オートセーブ完了:", gameState);
+}
+
+// 4. ロード関数（ページを開いたときにデータを読み込む）
+function loadGame() {
+    const savedData = localStorage.getItem('my_game_save');
+    if (savedData) {
+        // 保存されたデータがあれば、現在のステータスに上書き
+        gameState = JSON.parse(savedData);
+        console.log("データをロードしました:", gameState);
+    } else {
+        console.log("セーブデータがありません。初期値で開始します。");
+    }
+    // 画面にデータを反映
+    updateUI();
+}
+
+// 5. ページが読み込まれたら自動的にロードを実行
+window.addEventListener('DOMContentLoaded', loadGame);
     
     function updateScoreBoard() {
         document.getElementById('score-player').innerText = playerWins;
