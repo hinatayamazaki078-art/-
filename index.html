@@ -238,26 +238,39 @@
     <!-- ▼ 新規追加: プロフィールカード用オーバーレイ ▼ -->
     <div id="profile-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:110; background:rgba(0,0,0,0.85); flex-direction:column; justify-content:center; align-items:center; padding: 15px; box-sizing: border-box;">
         
-        <!-- カード本体（画像を背景に指定） -->
-        <div style="position: relative; width: 100%; max-width: 380px; aspect-ratio: 1.5 / 1; background-image: url('プロフィールカード.png'); background-size: cover; background-position: center; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+        <!-- 背景画像 (pngに変更済) とカードの縦横比を微調整 -->
+        <div style="position: relative; width: 100%; max-width: 400px; aspect-ratio: 1.55 / 1; min-height: 220px; background-color: #000; background-image: url('プロフィールカード.png'); background-size: cover; background-position: center; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
 
-            <!-- 1. アバター画像（丸枠にはめ込む） -->
-            <div style="position: absolute; top: 16%; left: 8.5%; width: 29.5%; aspect-ratio: 1 / 1; border-radius: 50%; overflow: hidden; display: flex; justify-content: center; align-items: flex-start;">
-                <div id="profile-avatar" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background-color: rgba(255,255,255,0.1);"></div>
+            <!-- 1. アバター画像（丸枠にはめ込み、顔を中心に） -->
+            <div style="position: absolute; top: 14%; left: 6%; width: 30%; height: 46.5%; border-radius: 50%; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                <div id="profile-avatar" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;"></div>
+                
+                <!-- アバター画像を枠に綺麗に収めるためのCSS -->
+                <style>
+                    #profile-avatar img {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover; /* 画像を丸枠いっぱいに広げ、はみ出した部分をカット */
+                        object-position: center 20%; /* 顔が中心になるように、少し上の方を映す */
+                    }
+                </style>
             </div>
 
             <!-- 2. NAME -->
-            <div id="profile-name-text" style="position: absolute; top: 27%; left: 45%; width: 48%; height: 12%; display: flex; align-items: center; justify-content: center; color: #f1c40f; font-size: 15px; font-weight: bold; letter-spacing: 2px;"></div>
+            <!-- 黒枠のど真ん中に来るように位置を調整 -->
+            <div id="profile-name-text" style="position: absolute; top: 29.5%; left: 41%; width: 52%; height: 10%; display: flex; align-items: center; justify-content: center; color: #f1c40f; font-size: 16px; font-weight: bold; letter-spacing: 2px;"></div>
 
             <!-- 3. 総資産額 -->
-            <div id="profile-assets-text" style="position: absolute; top: 51.5%; left: 53%; width: 40%; height: 12%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; font-weight: bold;"></div>
+            <!-- 枠からはみ出さず、左寄り（コインマークのすぐ横）になるよう調整 -->
+            <div id="profile-assets-text" style="position: absolute; top: 54.5%; left: 52%; width: 40%; height: 10%; display: flex; align-items: center; justify-content: flex-start; color: #fff; font-size: 16px; font-weight: bold;"></div>
 
             <!-- 4. PLAYER LEVEL -->
-            <div id="profile-level-text" style="position: absolute; top: 76%; left: 55%; width: 35%; height: 12%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; font-weight: bold;"></div>
+            <!-- 盾マークの上に重なるように位置とサイズをピンポイントで調整 -->
+            <div id="profile-level-text" style="position: absolute; top: 74%; left: 40.5%; width: 10%; height: 13%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 2px #000;"></div>
         </div>
 
         <!-- ボタンエリア -->
-        <div style="width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 10px; margin-top: 30px;">
+        <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; margin-top: 30px;">
             <button onclick="closeProfileAndGoToAssets()" style="margin: 0; background: linear-gradient(145deg, #d4af37, #aa8c2c); color: #111; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">💼 資産装備画面へ</button>
             <button onclick="closeProfile()" style="margin: 0; background-color: #7f8c8d;">閉じる</button>
         </div>
