@@ -1442,6 +1442,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateCoinUI(); // 起動時に所持金表示を更新
     checkAfkRewards();
     setTimeout(saveMyProfile, 1000);
+    setTimeout(listenForInvites, 1500);
 });
 
 // ページを閉じる時や、スマホで別タブ・アプリに移動した時に時間を保存する
@@ -1696,42 +1697,135 @@ function closeFriendActionModal() {
 }
 
 // 5. バトルに誘う（自分が誘う側）
-function sendBattleInvite() {
+// 5. バトルに誘う（自分が誘う側）
+async function sendBattleInvite() {
     if (!selectedFriend) return;
-    alert(`${selectedFriend.name} にバトルの招待を送りました！\n（※本実装ではここでFirebaseに通知データを送ります）`);
+    
+    // UIをいったん閉じてメッセージを出す
+    alert(`${selectedFriend.name} にバトルの招待を送りました！相手の返答を待ちます...`);
     closeFriendActionModal();
     
-    // 【テスト用】3秒後に相手から断られたというダミー通知を出す
-    setTimeout(() => {
-        alert(`${selectedFriend.name} にバトルを断られました...`);
-    }, 3000);
+    try {
+        const myName = document.getElementById('player-name').innerText.replace('👑 ', '');
+        
+        // ① 先にフレンド対戦用の「部屋」を作る（掛金は0）
+        const roomRef = await window.addDoc(window.collection(window.db, "rooms"), {
+            hostName: myName,
+            hostAvatar: currentAvatar,
+            guestName: selectedFriend.name,
+            betAmount: 0, // フレンド戦は報酬なし
+            status: "friend_match",
+            createdAt: new Date().getTime()
+        });
+
+        currentRoomId = roomRef.id;
+        isOnlineBattle = true;
+        isHost = true;
+
+        // ② 相手のID宛てに「招待状」を送る
+        const inviteRef = await window.addDoc(window.collection(window.db, "invites"), {
+            fromId: myPlayerId,
+            fromName: myName,
+            toId: selectedFriend.id,
+            roomId: currentRoomId,
+            status: "pending", // 返答待ち
+            timestamp: new Date().getTime()
+        });
+
+        // ③ 相手が「OK」か「NO」を押すまで、この招待状のステータスを監視する
+        const unsubscribe = window.onSnapshot(inviteRef, (docSnap) => {
+            const data = docSnap.data();
+            if (data && data.status === "accepted") {
+                unsubscribe(); // 監視ストップ
+                alert(`${selectedFriend.name} が対戦を承諾しました！バトル準備へ進みます。`);
+                currentBet = 0;
+                goToBuildScreen(true); // ホストとしてデッキ構築へ
+            } else if (data && data.status === "declined") {
+                unsubscribe(); // 監視ストップ
+                alert(`${selectedFriend.name} にバトルを断られました...`);
+            }
+        });
+    } catch (e) {
+        console.error("招待エラー:", e);
+        alert("通信エラーが発生しました。");
+    }
 }
-
 // =========================================
-// 通知受信ロジック（相手から誘われた側の動き）
+// リアルタイム通知受信ロジック（相手から誘われた側の動き）
 // =========================================
+let currentInviteId = null; // 届いている招待状のID
+let pendingRoomId = null;   // 招待された対戦部屋のID
 
-// 【テスト用】誰かから誘われたバナーを表示する関数
-// 開発者ツール（F12）のConsoleで testReceiveInvite() と打つとテストできます
-function testReceiveInvite() {
-    document.getElementById('invite-banner-text').innerText = `シロナ さんからバトルに誘われています！`;
-    document.getElementById('battle-invite-banner').style.display = 'flex';
+// 常に自分宛ての招待状を見張る関数
+function listenForInvites() {
+    // 「自分宛て(toId)」かつ「返答待ち(pending)」の招待状を探すクエリ
+    const q = window.query(
+        window.collection(window.db, "invites"),
+        window.where("toId", "==", myPlayerId),
+        window.where("status", "==", "pending")
+    );
+
+    window.onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                const data = change.doc.data();
+                
+                // ※リロードした時に昔の通知が来ないよう、15秒以上前の招待は無視する
+                const now = new Date().getTime();
+                if (now - data.timestamp > 15000) return;
+
+                // 招待データを受け取ってバナーを表示
+                currentInviteId = change.doc.id;
+                pendingRoomId = data.roomId;
+                document.getElementById('invite-banner-text').innerText = `${data.fromName} さんからバトルに誘われています！`;
+                document.getElementById('battle-invite-banner').style.display = 'flex';
+            }
+        });
+    });
 }
 
 // OK（対戦する）を押したとき
-function acceptBattleInvite() {
+async function acceptBattleInvite() {
     document.getElementById('battle-invite-banner').style.display = 'none';
-    alert("招待を承諾しました！バトル準備画面（報酬なし）へ移動します。");
-    // ※ここに、報酬なしモードのデッキ構築画面へ移動する処理を追加します
-    currentBet = 0;
-    goToBuildScreen(true); // オンラインフラグで構築画面へ
+    if (!currentInviteId) return;
+
+    try {
+        // ① 招待状のステータスを「承諾」にして相手に知らせる
+        await window.updateDoc(window.doc(window.db, "invites", currentInviteId), {
+            status: "accepted"
+        });
+
+        // ② 対戦部屋に自分の情報を書き込む
+        const myName = document.getElementById('player-name').innerText.replace('👑 ', '');
+        await window.updateDoc(window.doc(window.db, "rooms", pendingRoomId), {
+            guestAvatar: currentAvatar,
+            guestName: myName
+        });
+
+        alert("招待を承諾しました！バトル準備画面へ移動します。");
+        currentBet = 0;
+        isOnlineBattle = true;
+        isHost = false; // 誘われた側なのでゲスト
+        currentRoomId = pendingRoomId;
+        goToBuildScreen(true); // ゲストとしてデッキ構築へ
+    } catch (e) {
+        console.error("承諾エラー:", e);
+    }
 }
 
 // NO（断る）を押したとき
-function declineBattleInvite() {
+async function declineBattleInvite() {
     document.getElementById('battle-invite-banner').style.display = 'none';
-    // ※ここでFirebase経由で相手に「断った」というデータを返します
-    console.log("招待を断りました。相手に通知を送ります。");
+    if (!currentInviteId) return;
+
+    try {
+        // 招待状のステータスを「拒否」にして相手に知らせる
+        await window.updateDoc(window.doc(window.db, "invites", currentInviteId), {
+            status: "declined"
+        });
+    } catch (e) {
+        console.error("拒否エラー:", e);
+    }
 }
     
     function updateScoreBoard() {
