@@ -1374,10 +1374,11 @@ function saveGameState() {
 
 // 報酬を計算して画面を表示する関数
 function checkAfkRewards() {
-    // ★ 既に報酬画面が出ている場合は、再計算しないようにスキップする
+    // 既に報酬画面が出ている場合は、再計算しないようにスキップする
     if (document.getElementById('afk-reward-overlay').style.display === 'flex') {
         return;
     }
+
     const lastPlayTime = localStorage.getItem('lastPlayTime');
     
     if (lastPlayTime) {
@@ -1385,12 +1386,12 @@ function checkAfkRewards() {
         const diffMs = now - parseInt(lastPlayTime, 10);
         const diffMinutes = Math.floor(diffMs / (1000 * 60)); // ミリ秒を分に変換
 
-        // 1分以上経過していれば報酬画面を表示
-        if (diffMinutes >= 1) {
-            afkEarnedCoins = diffMinutes; // 1分につき1コイン
-            document.getElementById('afk-coin-amount').innerText = afkEarnedCoins.toLocaleString();
-            document.getElementById('afk-reward-overlay').style.display = 'flex';
-        }
+        // ▼ 変更：「1分以上」という条件 (if) を無くし、無条件で実行するようにしました
+        afkEarnedCoins = diffMinutes; 
+        
+        document.getElementById('afk-coin-amount').innerText = afkEarnedCoins.toLocaleString();
+        document.getElementById('afk-reward-overlay').style.display = 'flex';
+        
     } else {
         // 初回プレイ時は現在時刻だけ保存しておく
         saveGameState();
