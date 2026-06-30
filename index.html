@@ -225,6 +225,57 @@
         .asset-item { background: white; border: 1px solid #bdc3c7; padding: 8px 12px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; overflow-y: auto; flex-grow: 1; margin-bottom: 15px; padding: 5px; }
         .shop-item { background: white; border: 1px solid #bdc3c7; border-radius: 8px; padding: 10px; text-align: center; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    /* =========================================
+   5. フレンド機能＆通知バナー用スタイル
+   ========================================= */
+#friend-overlay {
+    display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 120; background: rgba(0,0,0,0.95); flex-direction: column; padding: 20px; box-sizing: border-box;
+}
+.friend-search-bar {
+    display: flex; gap: 5px; margin-bottom: 15px;
+}
+.friend-search-bar input {
+    flex-grow: 1; padding: 10px; border-radius: 6px; border: none; font-size: 14px;
+}
+.friend-list {
+    flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+}
+.friend-item {
+    background: #2c3e50; border: 1px solid #34495e; padding: 10px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+}
+.friend-info { display: flex; align-items: center; gap: 12px; }
+.friend-avatar {
+    width: 45px; height: 45px; background: #111; border-radius: 50%; display: flex;
+    justify-content: center; align-items: center; overflow: hidden;
+}
+.friend-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center top; transform: scale(1.5); }
+.friend-name { color: #fff; font-weight: bold; font-size: 15px; }
+.status-indicator {
+    width: 10px; height: 10px; border-radius: 50%;
+}
+.status-online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+.status-offline { background-color: #7f8c8d; }
+
+/* アクションメニュー */
+#friend-action-modal {
+    display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 130; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;
+}
+.action-modal-content {
+    background: #ecf0f1; width: 100%; max-width: 300px; padding: 20px; border-radius: 12px; text-align: center;
+}
+.action-modal-content button { width: 100%; margin-bottom: 10px; }
+
+/* リアルタイム通知バナー */
+#battle-invite-banner {
+    display: none; position: absolute; top: 0; left: 0; width: 100%; z-index: 999;
+    background: linear-gradient(145deg, #e74c3c, #c0392b); color: white; padding: 15px;
+    box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.5); flex-direction: column; text-align: center;
+}
+.banner-actions { display: flex; gap: 10px; margin-top: 10px; justify-content: center; }
+.banner-actions button { margin: 0; padding: 8px 20px; border: 2px solid #fff; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -234,6 +285,35 @@
 </audio>
 
 <div id="app-container">
+
+    <div id="battle-invite-banner">
+    <div style="font-weight: bold; font-size: 15px;" id="invite-banner-text">〇〇さんからバトルに誘われています！</div>
+    <div class="banner-actions">
+        <button style="background: #27ae60;" onclick="acceptBattleInvite()">OK (対戦する)</button>
+        <button style="background: #7f8c8d;" onclick="declineBattleInvite()">NO (断る)</button>
+    </div>
+</div>
+
+<div id="friend-overlay">
+    <h2 style="color:#f1c40f; text-align:center; margin-top:10px;">フレンド</h2>
+    <div class="friend-search-bar">
+        <input type="text" id="friend-search-input" placeholder="プレイヤー名で検索...">
+        <button style="margin:0; padding:10px 15px; font-size:14px;" onclick="alert('検索機能はデータベース連携後に動作します')">検索</button>
+    </div>
+    <div class="friend-list" id="friend-list-container">
+        </div>
+    <button onclick="closeFriendMenu()" style="margin-top:20px; background-color:#7f8c8d;">閉じる</button>
+</div>
+
+<div id="friend-action-modal">
+    <div class="action-modal-content">
+        <h3 id="action-target-name" style="margin-top:0; color:#2c3e50;">プレイヤー名</h3>
+        <button style="background: linear-gradient(145deg, #e74c3c, #c0392b);" onclick="sendBattleInvite()">⚔️ バトルに誘う (報酬なし)</button>
+        <button style="background: #2980b9;" onclick="alert('プロフィール確認機能は準備中です')">👤 プロフィール確認</button>
+        <button style="background: #f39c12;" onclick="alert('資産確認機能は準備中です')">💼 装備資産を確認</button>
+        <button style="background: #7f8c8d;" onclick="closeFriendActionModal()">キャンセル</button>
+    </div>
+</div>
 
     <!-- ▼ 新規追加: AFK報酬用オーバーレイ ▼ -->
 <div id="afk-reward-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:200; background:rgba(0,0,0,0.9); flex-direction:column; justify-content:center; align-items:center; padding: 20px; box-sizing: border-box; text-align: center;">
@@ -300,6 +380,7 @@
     <div id="screen-home" class="screen active">
         <!-- 1. ヘッダー (ボタンなどの奥にいかないよう手前に配置) -->
         <div class="header-status" style="position: relative; z-index: 10;">
+            <button onclick="openFriendMenu()" style="position: absolute; top: 10px; right: 10px; z-index: 20; padding: 6px 12px; font-size: 12px; background: #2c3e50; color: #fff; border: 1px solid #7f8c8d; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">👥 フレンド</button>
             <div class="header-left">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span id="player-name" style="cursor: pointer; text-decoration: underline; text-underline-offset: 3px;" onclick="changePlayerName()">👑 ゲスト</span>
@@ -1484,6 +1565,101 @@ function collectAfkRewards() {
     } else {
         alert("コインが足りません！");
     }
+}
+    
+    // =========================================
+// 新規追加：フレンド機能＆通知ロジック
+// =========================================
+
+// ※テスト用のダミーフレンドデータです
+let myFriends = [
+    { id: "f1", name: "サトシ", avatar: "キャラ2.png", isOnline: true },
+    { id: "f2", name: "シロナ", avatar: "キャラ8.png", isOnline: false }
+];
+let selectedFriend = null; // 現在アクションメニューを開いているフレンド
+
+// 1. フレンド画面を開く
+function openFriendMenu() {
+    renderFriendList();
+    document.getElementById('friend-overlay').style.display = 'flex';
+}
+
+// 2. フレンド画面を閉じる
+function closeFriendMenu() {
+    document.getElementById('friend-overlay').style.display = 'none';
+}
+
+// 3. フレンドリストを描画する
+function renderFriendList() {
+    const container = document.getElementById('friend-list-container');
+    container.innerHTML = '';
+    
+    myFriends.forEach(friend => {
+        const statusClass = friend.isOnline ? 'status-online' : 'status-offline';
+        const avatarHtml = friend.avatar.includes('.png') 
+            ? `<img src="${friend.avatar}">` 
+            : `<div style="font-size:25px;">${friend.avatar}</div>`;
+
+        container.innerHTML += `
+            <div class="friend-item" onclick="openFriendActionModal('${friend.id}', '${friend.name}')">
+                <div class="friend-info">
+                    <div class="friend-avatar">${avatarHtml}</div>
+                    <span class="friend-name">${friend.name}</span>
+                </div>
+                <div class="${statusClass}"></div>
+            </div>
+        `;
+    });
+}
+
+// 4. アクションメニューを開く
+function openFriendActionModal(friendId, friendName) {
+    selectedFriend = { id: friendId, name: friendName };
+    document.getElementById('action-target-name').innerText = friendName;
+    document.getElementById('friend-action-modal').style.display = 'flex';
+}
+
+function closeFriendActionModal() {
+    document.getElementById('friend-action-modal').style.display = 'none';
+}
+
+// 5. バトルに誘う（自分が誘う側）
+function sendBattleInvite() {
+    if (!selectedFriend) return;
+    alert(`${selectedFriend.name} にバトルの招待を送りました！\n（※本実装ではここでFirebaseに通知データを送ります）`);
+    closeFriendActionModal();
+    
+    // 【テスト用】3秒後に相手から断られたというダミー通知を出す
+    setTimeout(() => {
+        alert(`${selectedFriend.name} にバトルを断られました...`);
+    }, 3000);
+}
+
+// =========================================
+// 通知受信ロジック（相手から誘われた側の動き）
+// =========================================
+
+// 【テスト用】誰かから誘われたバナーを表示する関数
+// 開発者ツール（F12）のConsoleで testReceiveInvite() と打つとテストできます
+function testReceiveInvite() {
+    document.getElementById('invite-banner-text').innerText = `シロナ さんからバトルに誘われています！`;
+    document.getElementById('battle-invite-banner').style.display = 'flex';
+}
+
+// OK（対戦する）を押したとき
+function acceptBattleInvite() {
+    document.getElementById('battle-invite-banner').style.display = 'none';
+    alert("招待を承諾しました！バトル準備画面（報酬なし）へ移動します。");
+    // ※ここに、報酬なしモードのデッキ構築画面へ移動する処理を追加します
+    currentBet = 0;
+    goToBuildScreen(true); // オンラインフラグで構築画面へ
+}
+
+// NO（断る）を押したとき
+function declineBattleInvite() {
+    document.getElementById('battle-invite-banner').style.display = 'none';
+    // ※ここでFirebase経由で相手に「断った」というデータを返します
+    console.log("招待を断りました。相手に通知を送ります。");
 }
     
     function updateScoreBoard() {
