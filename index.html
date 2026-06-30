@@ -68,7 +68,8 @@
             background: rgba(26, 18, 11, 0.85);
             border: 2px solid #d4af37;
             color: #e6c662;
-            padding: 12px 15px;
+            /* ▼ ここを変更：上12px、右95px(ボタン用スペース)、下12px、左15px ▼ */
+            padding: 12px 95px 12px 15px; 
             border-radius: 10px;
             display: flex;
             justify-content: space-between;
@@ -88,20 +89,26 @@
             background: rgba(0, 0, 0, 0.7);
             border: 1px solid #d4af37;
             border-radius: 20px;
-            padding: 4px 8px 4px 12px;
+            padding: 3px 6px 3px 10px;
             color: #f1c40f;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+            /* margin-right: 85px; ← これを削除！ */
         }
-        .coin-icon { margin-right: 6px; font-size: 18px; }
+        .coin-icon { 
+            margin-right: 4px; 
+            font-size: 16px; /* 元の18pxから小さく変更[cite: 1] */
+        }
         .coin-plus-btn {
             background: linear-gradient(145deg, #2ecc71, #27ae60);
             color: white;
             border-radius: 50%;
-            width: 20px; height: 20px;
+            width: 18px; height: 18px; /* 元の20pxから小さく変更[cite: 1] */
             display: flex; justify-content: center; align-items: center;
-            margin-left: 10px; font-size: 14px; cursor: pointer;
+            margin-left: 6px; 
+            font-size: 12px; /* 元の14pxから小さく変更[cite: 1] */
+            cursor: pointer;
             border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
         .avatar-area {
