@@ -694,6 +694,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         if (matchingTimeout) clearTimeout(matchingTimeout);
         if (unsubscribeLobby) { unsubscribeLobby(); unsubscribeLobby = null; }
         if (unsubscribeHost) { unsubscribeHost(); unsubscribeHost = null; }
+        if (unsubscribeBattleStatus) { unsubscribeBattleStatus(); unsubscribeBattleStatus = null; }
 
         // エントリー中の場合は払い戻し＆キャンセルを執行
         await cancelEntry();
@@ -1270,7 +1271,8 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     renderHands();
                     playBGM();
                     showScreen('screen-battle');
-                    startBtn.innerText = "バトル開始！"; 
+                    startBtn.innerText = "バトル開始！";
+                    startBattleStatusMonitor();
                 }
             });
 
@@ -1418,6 +1420,81 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }, 750);
     }
 
+    // ▼ 追加：バトル中の切断監視用リスナー
+    let unsubscribeBattleStatus = null;
+
+    // =========================================
+    // 新規追加：オンラインバトル中の切断・離脱ペナルティ処理
+    // =========================================
+    
+    // 1. バトル中の部屋ステータスを常時監視する関数
+    function startBattleStatusMonitor() {
+        if (unsubscribeBattleStatus) unsubscribeBattleStatus();
+        
+        const roomRef = window.doc(window.db, "rooms", currentRoomId);
+        unsubscribeBattleStatus = window.onSnapshot(roomRef, (docSnap) => {
+            const data = docSnap.data();
+            if (!data) return;
+
+            // 自分がホストの時にゲストが切断、または自分がゲストの時にホストが切断したかを判定
+            const isOpponentForfeit = (isHost && data.status === "guest_forfeit") || (!isHost && data.status === "host_forfeit");
+            
+            if (isOpponentForfeit) {
+                if (unsubscribeBattleStatus) { unsubscribeBattleStatus(); unsubscribeBattleStatus = null; }
+                handleOpponentDisconnect();
+            }
+        });
+    }
+
+    // 2. 相手が切断したとき（残された側：勝利判定）の処理
+    function handleOpponentDisconnect() {
+        isOnlineBattle = false; // ループ・2重処理防止
+        const logEl = document.getElementById('battle-log');
+        const returnBtn = document.getElementById('btn-return-home');
+        
+        logEl.innerHTML = `<div style="color:#e74c3c; font-size:15px; font-weight:bold;">⚠️ 相手プレイヤーの切断を検知しました。</div>`;
+        
+        if (currentBet > 0) {
+            // 既存の「事前に引かない」仕様に合わせ、不戦勝として掛け金分をプラス
+            coins += currentBet; 
+            const payout = currentBet * 2;
+            logEl.innerHTML += `<div class="win-text">🎉 あなたの不戦勝です！ [ ${payout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+        } else {
+            logEl.innerHTML += `<div class="win-text">🎉 あなたの不戦勝です！ 🎉</div>`;
+        }
+        
+        updateCoinUI();
+        saveGameState();
+        returnBtn.style.display = 'block';
+        
+        // 4秒後に自動でホームに戻す
+        setTimeout(() => {
+            goToHome();
+        }, 4000);
+    }
+
+    // 3. 自分が切断したとき（閉じた側：負け・没収判定）の処理
+    function handleSelfDisconnect() {
+        if (!isOnlineBattle || !currentRoomId) return;
+
+        // 1. 掛け金の没収（ローカルストレージに即座に保存して確定させる）
+        if (currentBet > 0) {
+            coins -= currentBet;
+            if (coins < 0) coins = 0;
+        }
+        
+        // 2. Firebaseに切断ステータスを送信して相手に知らせる
+        const roomRef = window.doc(window.db, "rooms", currentRoomId);
+        const statusValue = isHost ? "host_forfeit" : "guest_forfeit";
+        
+        // 閉じる瞬間のため、awaitせず即座にアップデートを要求
+        window.updateDoc(roomRef, {
+            status: statusValue
+        }).catch(e => console.error("切断ステータスの送信失敗:", e));
+
+        isOnlineBattle = false; // 2重処理防止
+    }
+    
     function goToLobbyScreen() {
         showScreen('screen-lobby');
         document.getElementById('btn-lobby-back').style.display = 'block';
@@ -1501,6 +1578,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function saveGameState() {
+    if (isOnlineBattle && document.getElementById('screen-battle').classList.contains('active')) {
+        handleSelfDisconnect();
+    }
+
     localStorage.setItem('lastPlayTime', Date.now());
     localStorage.setItem('playerCoins', coins);
     // 現在の表示名から「👑 」を取り除いて保存
@@ -1901,7 +1982,8 @@ async function declineBattleInvite() {
             }
         }
         
-        isOnlineBattle = false; 
+        isOnlineBattle = false;
+            if (unsubscribeBattleStatus) { unsubscribeBattleStatus(); unsubscribeBattleStatus = null; }
         updateCoinUI(); 
         saveGameState(); // ←念のためここにもセーブ処理を追加しておくと安全です
 
