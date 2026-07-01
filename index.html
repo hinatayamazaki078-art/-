@@ -297,6 +297,14 @@
     <audio id="battle-bgm" loop>
     <source src="Second_Dealing_full.mp3" type="audio/mpeg">
 </audio>
+    <audio id="sound-win">
+        <!-- 「おめでとうございます」の音声ファイル名に変更してください -->
+        <source src="win_sound.mp3" type="audio/mpeg"> 
+    </audio>
+    <audio id="sound-lose">
+        <!-- 「残念でした」の音声ファイル名に変更してください -->
+        <source src="lose_sound.mp3" type="audio/mpeg"> 
+    </audio>
 
 <div id="app-container">
 
@@ -1994,6 +2002,7 @@ async function declineBattleInvite() {
                 logEl.innerHTML += `<div style="color:#7f8c8d; font-size:18px; margin-top:4px;">🤝 ドローゲーム！ 🤝</div>`;
             }
         } else if (isPlayerWin) {
+            document.getElementById('sound-win').play().catch(e => console.log("音声再生エラー:", e));
             if (isOnlineBattle) {
                 // --- 修正: 事前に減っていないので、純利益(掛金分)だけを足す ---
                 const payout = currentBet * 2; 
@@ -2011,6 +2020,7 @@ async function declineBattleInvite() {
                 addExp(1);
             }
         } else {
+            document.getElementById('sound-lose').play().catch(e => console.log("音声再生エラー:", e));
             if (isOnlineBattle) {
                 // --- 修正: 負けた時に初めて掛金を引く処理を追加 ---
                 coins -= currentBet; // ←この1行を追加
