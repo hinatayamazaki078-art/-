@@ -308,6 +308,13 @@
 
 <div id="app-container">
 
+    <!-- ▼ 新規追加: アイテム発動カットイン ▼ -->
+    <div id="item-cutin-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:200; background:rgba(0,0,0,0.6); justify-content:center; align-items:center;">
+        <div id="item-cutin-content" style="background: linear-gradient(145deg, #f1c40f, #d4af37); color: #111; padding: 20px 40px; border-radius: 50px; font-size: 24px; font-weight: bold; transform: scale(0); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 4px solid #fff; box-shadow: 0 10px 20px rgba(0,0,0,0.5);">
+            👓 探偵の眼鏡 発動！
+        </div>
+    </div>
+
     <div id="battle-invite-banner">
     <div style="font-weight: bold; font-size: 15px;" id="invite-banner-text">〇〇さんからバトルに誘われています！</div>
     <div class="banner-actions">
@@ -461,7 +468,7 @@
             <button class="gacha-btn" style="width:100%; margin-bottom: 25px;" onclick="playGacha()">💎 100コインでガチャを回す</button>
             
             <!-- 新規追加のボタン（機能は準備中アラート） -->
-            <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #f39c12, #d35400); color: white; margin-bottom: 15px;" onclick="alert('専用景品画面は現在準備中です！')">🎁 専用景品</button>
+            <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #f39c12, #d35400); color: white; margin-bottom: 15px;" onclick="goToSpecialShopScreen()">🎁 専用景品</button>
             <button class="gacha-btn" style="width:100%; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: white; margin-bottom: 15px;" onclick="alert('カードデザイン購入画面は現在準備中です！')">🃏 カードデザイン購入</button>
             
             <!-- 戻るボタン -->
@@ -481,6 +488,11 @@
         <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">カードコスト振り分け</h2>
         <p style="text-align: center; color: #7f8c8d; margin-bottom: 5px;">コスト合計20を5枚に割り振ってください。</p>
         <div class="cost-counter" id="cost-counter-div">残りコスト: <span id="remaining-cost">20</span></div>
+        <div id="item-equip-area" style="display: none; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; border: 2px solid #f1c40f;">
+            <label style="font-weight: bold; color: #2c3e50; cursor: pointer;">
+                <input type="checkbox" id="check-equip-glasses" onchange="toggleItemEquip(this)"> 👓 探偵の眼鏡を使用する
+            </label>
+        </div>
         <div class="card-inputs" id="card-inputs-container"></div>
         <button id="btn-start-battle" disabled onclick="startBattle()">バトル開始！</button>
         <button style="background-color: #7f8c8d;" onclick="goToHome()">🏠 ホームに戻る</button>
@@ -552,6 +564,22 @@
         <button style="background-color: #7f8c8d; margin-top: auto;" onclick="goToHome()">🏠 ホームに戻る</button>
     </div>
 
+<!-- ▼ 新規追加: 専用景品ショップ画面 ▼ -->
+    <div id="screen-special-shop" class="screen">
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">専用景品ショップ</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">バトルを有利に進める特殊アイテムです。</p>
+        
+        <div style="background: white; border: 1px solid #bdc3c7; border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <div style="font-weight: bold; color: #2c3e50; font-size: 18px;">👓 探偵の眼鏡</div>
+                <div style="font-size: 12px; color: #7f8c8d; margin-top: 4px;">開始時、相手の手札が1枚公開される。</div>
+            </div>
+            <button id="btn-buy-glasses" style="margin: 0; padding: 10px 15px; font-size: 14px;" onclick="buyDetectiveGlasses()">🪙 500で購入</button>
+        </div>
+
+        <button style="background-color: #7f8c8d; margin-top: auto;" onclick="openShopMenu()">⬅️ メニューに戻る</button>
+    </div>
+    
 </div>
 
 <script>
@@ -606,7 +634,8 @@ async function saveMyProfile() {
     ];
 
     // 特殊アイテムの管理変数
-let hasDetectiveGlasses = false; // 探偵の眼鏡を所持しているか
+// 特殊アイテムの管理変数
+    let hasDetectiveGlasses = JSON.parse(localStorage.getItem('hasDetectiveGlasses')) || false; 
 let equippedItem = null; // 現在装備しているアイテム（例: "glasses" または null）
     
     let shopCurrentItems = []; // 現在ショップに並んでいる商品リスト
@@ -1150,6 +1179,20 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         showScreen('screen-build');
         renderCardInputs();
         updateCost();
+        
+        // ▼ 追加: 装備状態のリセットと表示判定 ▼
+        document.getElementById('check-equip-glasses').checked = false;
+        equippedItem = null;
+        if (hasDetectiveGlasses) {
+            document.getElementById('item-equip-area').style.display = 'block';
+        } else {
+            document.getElementById('item-equip-area').style.display = 'none';
+        }
+    }
+
+    // ▼ チェックボックスを切り替えたときに呼ばれる関数も追加 ▼
+    function toggleItemEquip(checkbox) {
+        equippedItem = checkbox.checked ? "glasses" : null;
     }
 
     function renderCardInputs() {
@@ -1283,6 +1326,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                     showScreen('screen-battle');
                     startBtn.innerText = "バトル開始！";
                     startBattleStatusMonitor();
+                    triggerItemEffect();
                 }
             });
 
@@ -1306,6 +1350,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         renderHands();
         playBGM();
         showScreen('screen-battle');
+        triggerItemEffect();
     }
 }
     
@@ -1609,9 +1654,20 @@ function saveGameState() {
     localStorage.setItem('unlockedAvatars', JSON.stringify(unlockedAvatars));
     localStorage.setItem('ownedAssets', JSON.stringify(ownedAssets));
     localStorage.setItem('equippedAssets', JSON.stringify(equippedAssets));
+    localStorage.setItem('hasDetectiveGlasses', hasDetectiveGlasses);
 }
 
-function checkAfkRewards() {
+function goToSpecialShopScreen() {
+        showScreen('screen-special-shop');
+        const buyBtn = document.getElementById("btn-buy-glasses");
+        if (hasDetectiveGlasses) {
+            buyBtn.innerText = "購入済み";
+            buyBtn.style.background = "#7f8c8d";
+            buyBtn.disabled = true;
+        }
+    }
+    
+    function checkAfkRewards() {
     if (document.getElementById('afk-reward-overlay').style.display === 'flex') {
         return;
     }
@@ -1687,34 +1743,45 @@ function collectAfkRewards() {
         goToAssetsScreen();
     }
     
-    function triggerItemEffect(callback) {
-    if (equippedItem === "glasses") {
-        const overlay = document.getElementById("item-cutin-overlay");
-        const content = document.getElementById("item-cutin-content");
-        
-        overlay.style.display = "flex";
-        
-        setTimeout(() => {
-            content.style.transform = "scale(1)";
-        }, 50);
-
-        setTimeout(() => {
-            content.style.transform = "scale(0)"; 
+    function triggerItemEffect() {
+        if (equippedItem === "glasses") {
+            const overlay = document.getElementById("item-cutin-overlay");
+            const content = document.getElementById("item-cutin-content");
+            
+            overlay.style.display = "flex";
+            
+            // ズームインのアニメーション
             setTimeout(() => {
-                overlay.style.display = "none";
-                alert("相手の手札が1枚公開されました！（※ここに公開処理を入れます）");
-                equippedItem = null;
-                document.getElementById("check-equip-glasses").checked = false;
+                content.style.transform = "scale(1)";
+            }, 50);
 
-                if (callback) callback();
-                
-            }, 300);
-        }, 2000); 
-        
-    } else {
-        if (callback) callback();
+            // 2秒後に消して実際の効果を発動
+            setTimeout(() => {
+                content.style.transform = "scale(0)"; 
+                setTimeout(() => {
+                    overlay.style.display = "none";
+                    
+                    // ▼ 相手のカードをランダムに1枚公開する処理 ▼
+                    const availableIndices = cpuDeck.map((val, idx) => val !== null ? idx : -1).filter(idx => idx !== -1);
+                    if (availableIndices.length > 0) {
+                        const targetIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+                        const cpuCardEl = document.getElementById(`cpu-card-${targetIndex}`);
+                        const cpuCardFrontEl = document.getElementById(`cpu-card-front-${targetIndex}`);
+                        
+                        // 数値を書き換えて裏返す
+                        cpuCardFrontEl.innerText = cpuDeck[targetIndex];
+                        cpuCardEl.classList.add('is-flipped');
+                    }
+
+                    // 装備をリセット
+                    equippedItem = null;
+                    document.getElementById("check-equip-glasses").checked = false;
+                    
+                }, 300);
+            }, 2000); 
+            
+        }
     }
-}
     
     function buyDetectiveGlasses() {
     if (hasDetectiveGlasses) {
