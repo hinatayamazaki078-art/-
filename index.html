@@ -2006,14 +2006,14 @@ async function declineBattleInvite() {
         } else if (isPlayerWin) {
             document.getElementById('sound-win').play().catch(e => console.log("音声再生エラー:", e));
             if (isOnlineBattle) {
-                // --- 修正: 事前に減っていないので、純利益(掛金分)だけを足す ---
-                const payout = currentBet * 2; 
-                coins += currentBet; // ←payoutではなく、currentBetを足すように変更
+                // 事前に減っていないので、純利益(掛金分)を足す
+                coins += currentBet; 
                 
                 if (currentBet === 0) {
                     logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! フレンドに勝利しました！ 🎉</div>`;
                 } else {
-                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 掛金の倍 [ ${payout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+                    // 表示を「掛金分」に変更し、獲得額の変数も currentBet に修正
+                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 掛金分 [ ${currentBet.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
                 }
                 addExp(5);
             } else {
