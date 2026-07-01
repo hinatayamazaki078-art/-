@@ -599,18 +599,19 @@ let equippedItem = null; // 現在装備しているアイテム（例: "glasses
 
     // ▼ 追加: プレイヤーの資産管理用データ ▼
     // テスト用に、最初から3つの資産をカバン（所持リスト）に持たせておきます
-    let ownedAssets = [
-        { id: 1, name: "高級ブランド時計", price: 5000, icon: "⌚" },
-        { id: 3, name: "VIPな王冠", price: 120000, icon: "👑" },
-        { id: 6, name: "純金インゴット", price: 25000, icon: "🪙" }
-    ];
-    
-    // 10個の装備枠。最初はすべて空（null）の状態で10個分用意します
-    let equippedAssets = Array(10).fill(null);
+    let ownedAssets = JSON.parse(localStorage.getItem('ownedAssets')) || [
+    { id: 1, name: "高級ブランド時計", price: 5000, icon: "⌚" },
+    { id: 3, name: "VIPな王冠", price: 120000, icon: "👑" },
+    { id: 6, name: "純金インゴット", price: 25000, icon: "🪙" }
+];
 
-    // 最初から2つのキャラを持たせておきます
-    let unlockedAvatars = ['キャラ1.png', 'キャラ2.png']; 
-    let currentAvatar = 'キャラ1.png';       
+let equippedAssets = JSON.parse(localStorage.getItem('equippedAssets')) || Array(10).fill(null);
+
+let unlockedAvatars = JSON.parse(localStorage.getItem('unlockedAvatars')) || ['キャラ1.png', 'キャラ2.png'];
+let currentAvatar = localStorage.getItem('currentAvatar') || 'キャラ1.png';
+
+// 名前を読み込むための変数も追加しておきます
+let savedPlayerName = localStorage.getItem('playerName') || 'ゲスト';       
     // ブラウザに保存されたコインがあれば読み込み、なければ100をセット
 let coins = parseInt(localStorage.getItem('playerCoins')) || 100; 
 let afkEarnedCoins = 0; // AFK報酬計算用の変数
@@ -765,6 +766,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 
         closeAvatarList();
         saveMyProfile();
+        saveGameState();
     }
     function closeAvatarList() {
         document.getElementById('avatar-list-overlay').style.display = 'none';
@@ -934,6 +936,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             newName = newName.trim().substring(0, 10);
             document.getElementById('player-name').innerText = '👑 ' + newName;
             saveMyProfile();
+            saveGameState();
         }
     }
     
@@ -1071,6 +1074,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         ownedAssets.splice(assetIndex, 1);
 
         renderAssetsScreen();
+        saveGameState();
     }
 
     function unequipAsset(slotIndex) {
@@ -1081,6 +1085,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         ownedAssets.push(asset);
 
         renderAssetsScreen();
+        saveGameState();
     }
 
     function goToAssetsScreen() {
@@ -1452,6 +1457,16 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 
 window.addEventListener('DOMContentLoaded', () => {
+    // 保存された名前を画面に反映
+    document.getElementById('player-name').innerText = '👑 ' + savedPlayerName;
+    
+    // 保存されたアバターをホーム画面に反映
+    const displayDiv = document.getElementById('avatar-display');
+    if (currentAvatar.includes('.png')) {
+        displayDiv.innerHTML = `<img src="${currentAvatar}" style="width: 100%; height: 100%; object-fit: contain; object-position: center bottom; transform: scale(1.1); transform-origin: center bottom;">`;
+    } else {
+        displayDiv.innerHTML = `<div style="font-size: 150px; display:flex; justify-content:center; align-items:center; height:100%; text-shadow: 0px 4px 15px rgba(0,0,0,0.8);">${currentAvatar}</div>`;
+    }
     updateCoinUI(); 
     checkAfkRewards();
     setTimeout(saveMyProfile, 1000);
@@ -1470,6 +1485,15 @@ document.addEventListener('visibilitychange', () => {
 function saveGameState() {
     localStorage.setItem('lastPlayTime', Date.now());
     localStorage.setItem('playerCoins', coins);
+    // 現在の表示名から「👑 」を取り除いて保存
+    const currentName = document.getElementById('player-name').innerText.replace('👑 ', '');
+    localStorage.setItem('playerName', currentName);
+    
+    // アバターと資産の状況を保存
+    localStorage.setItem('currentAvatar', currentAvatar);
+    localStorage.setItem('unlockedAvatars', JSON.stringify(unlockedAvatars));
+    localStorage.setItem('ownedAssets', JSON.stringify(ownedAssets));
+    localStorage.setItem('equippedAssets', JSON.stringify(equippedAssets));
 }
 
 function checkAfkRewards() {
