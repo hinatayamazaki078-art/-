@@ -1299,7 +1299,9 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById('btn-next-turn').style.display = 'none';
         document.getElementById('btn-return-home').style.display = 'none';
         document.getElementById('battle-player-avatar').innerHTML = renderAvatarHtml(currentAvatar);
-        document.getElementById('battle-opponent-avatar').innerHTML = '🤖';
+        const dealerImages = ['ディーラー女.png', 'ディーラー男.png'];
+        const randomDealer = dealerImages[Math.floor(Math.random() * dealerImages.length)];
+        document.getElementById('battle-opponent-avatar').innerHTML = renderAvatarHtml(randomDealer);
 
         renderHands();
         playBGM();
