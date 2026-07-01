@@ -691,7 +691,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         // エントリー中の場合は払い戻し＆キャンセルを執行
         await cancelEntry();
 
-        stopBGM();
+        // stopBGM(); // ← コメントアウト（または行ごと削除）してBGMを止めないようにする
         
         showScreen('screen-home');
         updateCoinUI();
