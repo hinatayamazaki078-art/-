@@ -584,23 +584,36 @@
     </div>
 
 <!-- ▼ 新規追加: 専用景品ショップ画面 ▼ -->
-    <div id="screen-special-shop" class="screen">
-        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">専用景品ショップ</h2>
-        <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">バトルを有利に進める特殊アイテムです。</p>
-        
-        <div style="background: white; border: 1px solid #bdc3c7; border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
-            <div>
-    <!-- display: flex と align-items: center で画像とテキストの垂直方向を整える -->
-    <div style="font-weight: bold; color: #2c3e50; font-size: 18px; display: flex; align-items: center;">
-        <img src="探偵の眼鏡.png" class="detective-glasses-icon" alt="探偵の眼鏡"> 探偵の眼鏡
-    </div>
-    <div style="font-size: 12px; color: #7f8c8d; margin-top: 4px;">開始時、相手の手札が1枚公開される。</div>
-</div>
-            <button id="btn-buy-glasses" style="margin-bottom: 0; padding: 10px 15px; font-size: 14px; background: linear-gradient(145deg, #f39c12, #d35400); color: white; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" onclick="buyDetectiveGlasses()">購入 (500🪙)</button>
-
-        <button style="background-color: #7f8c8d; margin-top: auto;" onclick="openShopMenu()">⬅️ メニューに戻る</button>
-    </div>
+    <!-- 画面全体を縦並び(flex)にして、高さを画面いっぱいに(height:100%) -->
+<div id="screen-special-shop" class="screen" style="display: flex; flex-direction: column; height: 100vh; padding: 10px; box-sizing: border-box;">
     
+    <h2>専用景品ショップ</h2>
+    <p>バトルを有利に進める特殊アイテムです。</p>
+    
+    <!-- ▼ アイテム一覧エリア（ここだけがスクロールする） ▼ -->
+    <!-- flex-grow: 1 で残りのスペースを全取得し、overflow-y: auto でスクロールバーを出す -->
+    <div style="flex-grow: 1; overflow-y: auto; padding-bottom: 10px;">
+        
+        <!-- アイテム1 -->
+        <div class="item" style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <p>探偵の眼鏡</p>
+            <button>購入</button>
+        </div>
+        
+        <!-- アイテム2（今後追加分） -->
+        <div class="item" style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <p>新しいアイテム</p>
+            <button>購入</button>
+        </div>
+        <!-- 今後アイテムが増えても、このdivの中でスクロールするだけです -->
+
+    </div>
+    <!-- ▲ アイテム一覧エリア ここまで ▲ -->
+
+    <!-- ▼ 戻るボタン（最下部に固定される） ▼ -->
+    <!-- margin-top: auto をつけることで、一番下に押し付けられます -->
+    <button style="margin-top: auto; width: 100%; padding: 15px;" onclick="openShopMenu()">⬅️ メニューに戻る</button>
+
 </div>
 
 <script>
