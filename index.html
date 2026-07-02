@@ -386,6 +386,7 @@
             <!-- 4. PLAYER LEVEL -->
             <!-- 盾マークの上に重なるように位置とサイズをピンポイントで調整 -->
             <div id="profile-level-text" style="position: absolute; top: 74%; left: 40.5%; width: 10%; height: 13%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 2px #000;"></div>
+            <div id="profile-rank-text" style="position: absolute; top: 74%; left: 52%; width: 40%; height: 13%; display: flex; align-items: center; justify-content: flex-start; color: #f1c40f; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px #000;"></div>
         </div>
 
         <div id="profile-id-text" style="position: absolute; top: 88%; left: 0%; width: 100%; text-align: center; color: #bdc3c7; font-size: 11px; letter-spacing: 1px;">ID: 取得中...</div>
@@ -439,6 +440,7 @@
             </div>
             <button class="change-avatar-btn" style="width:100%;" onclick="openAvatarList()">👕 アバターを変更する</button>
             <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22;" onclick="goToLobbyScreen()">🪑 席を探す (オンライン)</button>
+            <button class="battle-btn" style="width:100%; background: linear-gradient(145deg, #2980b9, #1a5276); color: #fff; border-color: #1f618d;" onclick="startRankMatch()">🏆 ランクマッチモード</button>
             <button class="battle-btn" style="width:100%;" onclick="goToBuildScreen(false)">⚔️ オフライン練習モード</button>
         </div>
     </div>
@@ -607,6 +609,9 @@ async function saveMyProfile() {
             avatar: currentAvatar,
             isOnline: true,
             lastActive: new Date().toISOString() // 最後にログインした時間
+            rankTier: playerRankTier,
+            rankSub: playerRankSub,
+            rankString: getRankString()
         }, { merge: true });
         
         console.log("プロフィールをサーバーに保存しました！ ID:", myPlayerId);
@@ -661,6 +666,18 @@ let coins = parseInt(localStorage.getItem('playerCoins')) || 100;
 let afkEarnedCoins = 0; // AFK報酬計算用の変数
     let playerLevel = parseInt(localStorage.getItem('playerLevel')) || 1; // 初期レベル1
     let playerExp = parseInt(localStorage.getItem('playerExp')) || 0;     // 初期経験値0
+    const rankNames = ["ブロンズ", "シルバー", "ゴールド", "プラチナ", "ダイヤモンド", "マスター", "グランドマスター", "カジノキング", "ザ・ハウス"];
+    const rankReqWins = [3, 3, 3, 4, 4, 5, 5, 8, 999]; // 次のサブランクへ上がるための必要勝数
+
+    let playerRankTier = parseInt(localStorage.getItem('playerRankTier')) || 0; // 0=ブロンズ ~ 8=ザ・ハウス
+    let playerRankSub = parseInt(localStorage.getItem('playerRankSub')) || 1;   // 1=Ⅰ, 2=Ⅱ, 3=Ⅲ
+    let playerRankWins = parseInt(localStorage.getItem('playerRankWins')) || 0; // 現在の勝数
+
+    // 自分のランク名を文字列で取得する関数
+    function getRankString() {
+        if (playerRankTier >= 8) return "ザ・ハウス"; 
+        return `${rankNames[playerRankTier]}${["Ⅰ", "Ⅱ", "Ⅲ"][playerRankSub - 1]}`;
+    }
     // オンラインバトル関連の管理状態
     let currentBet = 0;           // 選択中/勝負中の掛金
     let isOnlineBattle = false;   // オンライン戦（掛金戦）かどうかのフラグ
@@ -1598,6 +1615,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById('profile-assets-text').innerText = '🪙 ' + totalValue.toLocaleString();
         document.getElementById('profile-level-text').innerText = levelText;
         document.getElementById('profile-id-text').innerText = "ID: " + myPlayerId;
+        document.getElementById('profile-rank-text').innerText = "🏆 " + getRankString();
 
         const avatarDiv = document.getElementById('profile-avatar');
         if (currentAvatar.includes('.png')) {
@@ -1648,6 +1666,9 @@ function saveGameState() {
     localStorage.setItem('playerName', currentName);
     localStorage.setItem('playerLevel', playerLevel);
     localStorage.setItem('playerExp', playerExp);
+    localStorage.setItem('playerRankTier', playerRankTier);
+    localStorage.setItem('playerRankSub', playerRankSub);
+    localStorage.setItem('playerRankWins', playerRankWins);
     
     // アバターと資産の状況を保存
     localStorage.setItem('currentAvatar', currentAvatar);
