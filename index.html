@@ -700,6 +700,7 @@ let afkEarnedCoins = 0; // AFK報酬計算用の変数
     // オンラインバトル関連の管理状態
     let currentBet = 0;           // 選択中/勝負中の掛金
     let isOnlineBattle = false;   // オンライン戦（掛金戦）かどうかのフラグ
+    let isRankMatch = false;      // 追加：ランクマッチかどうかのフラグ
     let lobbySeats = [];          // ロビーの席一覧
     let matchingTimeout = null;   // エントリー時の擬似マッチング用タイマー
     let currentRoomId = null;       // 自分の部屋のID
@@ -733,9 +734,8 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     // 【追加修正】エントリーキャンセル＆払い戻し共通関数
     // =========================================
     async function cancelEntry() {
-    const lobbyScreen = document.getElementById('screen-lobby');
-    // ロビー画面が表示されており、自分がホストで、まだ賭け金が設定されている場合に実行
-    if (lobbyScreen && lobbyScreen.classList.contains('active') && isHost && currentBet > 0) {
+    // 掛金が設定されている（通常ロビー）、または ランクマッチ待機中の場合にキャンセルを実行
+    if (isHost && (currentBet > 0 || isRankMatch)) {
         
         // --- ここから下の3行を削除またはコメントアウト ---
         // coins += currentBet; // コインを返還
@@ -747,6 +747,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             // ローカル変数の各種フラグを即座にリセット
             isHost = false;
             isOnlineBattle = false;
+        isRankMatch = false;
             currentBet = 0;
             currentRoomId = null;
 
@@ -1917,7 +1918,44 @@ async function openFriendMenu() {
         container.innerHTML = '<div style="color:#e74c3c; text-align:center; margin-top:20px;">通信エラーが発生しました。</div>';
     }
 }
-function closeFriendMenu() {
+
+   // ランクマッチ用の勝敗処理
+function updateRank(isWin) {
+    // すでに最高ランク（ザ・ハウス = 8）なら何もしない
+    if (playerRankTier >= 8) return; 
+
+    if (isWin) {
+        playerRankWins++; // 1勝プラス
+        const reqWins = rankReqWins[playerRankTier]; // 次のランクに必要な勝数
+
+        // 必要勝数に達した場合
+        if (playerRankWins >= reqWins) {
+            playerRankWins = 0; // 勝数をリセット
+            if (playerRankSub < 3) {
+                // サブランクがⅢ未満なら、Ⅰ→Ⅱ、Ⅱ→Ⅲへアップ
+                playerRankSub++;
+            } else {
+                // サブランクがⅢなら、次のティア（ブロンズ→シルバーなど）のⅠへアップ
+                playerRankSub = 1;
+                playerRankTier++;
+                
+                // ザ・ハウスに到達した際のお祝いアラート（お好みで）
+                if (playerRankTier >= 8) {
+                    alert("👑 伝説到達 👑\n最高ランク「ザ・ハウス」に昇格しました！\nあなたは無敗の絶対王者です！");
+                }
+            }
+        }
+    } else {
+        // 負けた場合は1勝分マイナス。ただし、0未満にはならない（ランクダウンはしない仕様）
+        playerRankWins = Math.max(0, playerRankWins - 1);
+    }
+
+    // データベースとローカルに最新のランクを保存
+    saveGameState();
+    saveMyProfile();
+} 
+    
+    function closeFriendMenu() {
     document.getElementById('friend-overlay').style.display = 'none';
 }
 
@@ -2067,6 +2105,78 @@ async function declineBattleInvite() {
     }
 }
     
+    async function startRankMatch() {
+    isRankMatch = true;
+    isOnlineBattle = true;
+    currentBet = 0; // ランクマッチは掛金なし
+
+    const myRankStr = getRankString();
+    const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
+    
+    // ボタンのテキストをローディングっぽく変更
+    const rankBtn = document.querySelector('.battle-btn[onclick="startRankMatch()"]');
+    rankBtn.innerText = "⏳ 同ランクの相手を検索中...";
+    rankBtn.disabled = true;
+
+    try {
+        // Firebaseから「ランク待機中」かつ「自分と同じランク」の部屋を探す
+        const q = window.query(
+            window.collection(window.db, "rooms"),
+            window.where("status", "==", "waiting_rank"),
+            window.where("rank", "==", myRankStr)
+        );
+        const querySnapshot = await window.getDocs(q);
+
+        if (!querySnapshot.empty) {
+            // 待機中の人がいた場合、ゲストとして挑戦！
+            const roomDoc = querySnapshot.docs[0];
+            currentRoomId = roomDoc.id;
+            isHost = false;
+
+            await window.updateDoc(window.doc(window.db, "rooms", currentRoomId), {
+                status: "playing",
+                guestName: pName,
+                guestAvatar: currentAvatar
+            });
+
+            rankBtn.innerText = "🏆 ランクマッチモード";
+            rankBtn.disabled = false;
+            goToBuildScreen(true);
+        } else {
+            // 待機中の人がいない場合、自分がホストになって部屋を作る
+            isHost = true;
+            const docRef = await window.addDoc(window.collection(window.db, "rooms"), {
+                hostName: pName,
+                hostAvatar: currentAvatar,
+                betAmount: 0,
+                status: "waiting_rank", // 通常のwaitingとは区別する
+                rank: myRankStr,        // 自分のランクを保存
+                createdAt: new Date().getTime()
+            });
+            currentRoomId = docRef.id;
+
+            // 誰かが入ってくるのを監視する
+            const roomRef = window.doc(window.db, "rooms", currentRoomId);
+            unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
+                const data = docSnap.data();
+                if (data && data.status === "playing") {
+                    unsubscribeHost(); // 監視ストップ
+                    rankBtn.innerText = "🏆 ランクマッチモード";
+                    rankBtn.disabled = false;
+                    goToBuildScreen(true);
+                }
+            });
+        }
+    } catch (error) {
+        console.error("ランクマッチエラー:", error);
+        alert("通信エラーが発生しました。");
+        rankBtn.innerText = "🏆 ランクマッチモード";
+        rankBtn.disabled = false;
+        isRankMatch = false;
+        isOnlineBattle = false;
+    }
+}
+    
     function updateScoreBoard() {
         document.getElementById('score-player').innerText = playerWins;
         document.getElementById('score-cpu').innerText = cpuWins;
@@ -2096,6 +2206,10 @@ async function declineBattleInvite() {
 
         if (isEnded) {
         returnBtn.style.display = 'block';
+
+            if (isRankMatch && !isDraw) {
+            updateRank(isPlayerWin); // 勝ったか負けたかを渡してランクを計算
+        }
         
         if (isDraw) {
             if (isOnlineBattle) {
@@ -2145,6 +2259,7 @@ async function declineBattleInvite() {
         }
         
         isOnlineBattle = false;
+            isRankMatch = false;
             if (unsubscribeBattleStatus) { unsubscribeBattleStatus(); unsubscribeBattleStatus = null; }
         updateCoinUI(); 
         saveGameState(); // ←念のためここにもセーブ処理を追加しておくと安全です
