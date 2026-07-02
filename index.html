@@ -1824,6 +1824,23 @@ function collectAfkRewards() {
         }
     }
     
+    // 【新規追加】ランクマッチ専用のキャンセル処理
+async function cancelRankMatch() {
+    const rankBtn = document.querySelector('.battle-btn[onclick="startRankMatch()"]');
+    if (unsubscribeHost) { unsubscribeHost(); unsubscribeHost = null; }
+    
+    // 既存のキャンセル共通処理を呼び出す
+    await cancelEntry();
+    
+    if (rankBtn) {
+        rankBtn.innerText = "🏆 ランクマッチモード";
+        rankBtn.disabled = false;
+    }
+    isRankMatch = false;
+    isOnlineBattle = false;
+    console.log("ランクマッチの待機をキャンセルしました。");
+}
+    
     function buyDetectiveGlasses() {
     if (hasDetectiveGlasses) {
         alert("すでに「探偵の眼鏡」を所持しています！");
@@ -2105,7 +2122,16 @@ async function declineBattleInvite() {
     }
 }
     
-    async function startRankMatch() {
+    // 【修正・差し替え】startRankMatch 関数とホスト部屋作成の補助関数
+async function startRankMatch() {
+    const rankBtn = document.querySelector('.battle-btn[onclick="startRankMatch()"]');
+    
+    // すでに検索中の場合は、もう一度ボタンを押すことでキャンセルを実行する
+    if (isRankMatch) {
+        await cancelRankMatch();
+        return;
+    }
+
     isRankMatch = true;
     isOnlineBattle = true;
     currentBet = 0; // ランクマッチは掛金なし
@@ -2113,10 +2139,9 @@ async function declineBattleInvite() {
     const myRankStr = getRankString();
     const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
     
-    // ボタンのテキストをローディングっぽく変更
-    const rankBtn = document.querySelector('.battle-btn[onclick="startRankMatch()"]');
-    rankBtn.innerText = "⏳ 同ランクの相手を検索中...";
-    rankBtn.disabled = true;
+    // ボタンのテキストをキャンセル用に変更（disabledにはせずクリック可能にする）
+    rankBtn.innerText = "❌ マッチングをキャンセル";
+    rankBtn.disabled = false;
 
     try {
         // Firebaseから「ランク待機中」かつ「自分と同じランク」の部屋を探す
@@ -2133,39 +2158,41 @@ async function declineBattleInvite() {
             currentRoomId = roomDoc.id;
             isHost = false;
 
-            await window.updateDoc(window.doc(window.db, "rooms", currentRoomId), {
-                status: "playing",
-                guestName: pName,
-                guestAvatar: currentAvatar
-            });
+            const roomRef = window.doc(window.db, "rooms", currentRoomId);
+            
+            try {
+                // 🔥【重要】トランザクションを使い、本当に相手が待機中か確認してから入る
+                await window.runTransaction(window.db, async (transaction) => {
+                    const roomSnap = await transaction.get(roomRef);
+                    if (!roomSnap.exists()) throw "部屋が存在しません";
+                    
+                    const roomData = roomSnap.data();
+                    // ホストが直前にキャンセルしていたり、他の人が先に入っていたら弾く
+                    if (roomData.status !== "waiting_rank") {
+                        throw "すでに他の人がマッチングしたか、キャンセルされました";
+                    }
 
-            rankBtn.innerText = "🏆 ランクマッチモード";
-            rankBtn.disabled = false;
-            goToBuildScreen(true);
+                    // 条件を満たしていれば安全にステータスを playing に更新
+                    transaction.update(roomRef, {
+                        status: "playing",
+                        guestName: pName,
+                        guestAvatar: currentAvatar
+                    });
+                });
+
+                // マッチングが安全に成功した場合の処理
+                rankBtn.innerText = "🏆 ランクマッチモード";
+                rankBtn.disabled = false;
+                goToBuildScreen(true);
+
+            } catch (transactionError) {
+                console.warn("マッチング競合を検知したため、自身がホストになります:", transactionError);
+                // 相手がタッチの差でキャンセルしていた場合は、自分がホストになって部屋を作る処理へフォールバック
+                await createRankMatchHostRoom(rankBtn, pName, myRankStr);
+            }
         } else {
             // 待機中の人がいない場合、自分がホストになって部屋を作る
-            isHost = true;
-            const docRef = await window.addDoc(window.collection(window.db, "rooms"), {
-                hostName: pName,
-                hostAvatar: currentAvatar,
-                betAmount: 0,
-                status: "waiting_rank", // 通常のwaitingとは区別する
-                rank: myRankStr,        // 自分のランクを保存
-                createdAt: new Date().getTime()
-            });
-            currentRoomId = docRef.id;
-
-            // 誰かが入ってくるのを監視する
-            const roomRef = window.doc(window.db, "rooms", currentRoomId);
-            unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
-                const data = docSnap.data();
-                if (data && data.status === "playing") {
-                    unsubscribeHost(); // 監視ストップ
-                    rankBtn.innerText = "🏆 ランクマッチモード";
-                    rankBtn.disabled = false;
-                    goToBuildScreen(true);
-                }
-            });
+            await createRankMatchHostRoom(rankBtn, pName, myRankStr);
         }
     } catch (error) {
         console.error("ランクマッチエラー:", error);
@@ -2175,6 +2202,32 @@ async function declineBattleInvite() {
         isRankMatch = false;
         isOnlineBattle = false;
     }
+}
+
+// ホスト部屋作成処理を関数に切り出し（競合時にも再利用するため）
+async function createRankMatchHostRoom(rankBtn, pName, myRankStr) {
+    isHost = true;
+    const docRef = await window.addDoc(window.collection(window.db, "rooms"), {
+        hostName: pName,
+        hostAvatar: currentAvatar,
+        betAmount: 0,
+        status: "waiting_rank",
+        rank: myRankStr,
+        createdAt: new Date().getTime()
+    });
+    currentRoomId = docRef.id;
+
+    // 誰かが入ってくるのを監視する
+    const roomRef = window.doc(window.db, "rooms", currentRoomId);
+    unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
+        const data = docSnap.data();
+        if (data && data.status === "playing") {
+            unsubscribeHost(); // 監視ストップ
+            rankBtn.innerText = "🏆 ランクマッチモード";
+            rankBtn.disabled = false;
+            goToBuildScreen(true);
+        }
+    });
 }
     
     function updateScoreBoard() {
@@ -2340,6 +2393,7 @@ async function nextTurn() {
 window.getDocs = getDocs; 
 window.query = query;     
 window.where = where;
+    window.runTransaction = runTransaction;
     
     console.log("🔥 Firebase 準備完了！");
 
