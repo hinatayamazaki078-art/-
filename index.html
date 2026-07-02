@@ -519,6 +519,10 @@
 
     <div id="screen-battle" class="screen">
         <div class="score-board">
+            <div id="set-info" style="display:none; font-size: 15px; color: #d35400; margin-bottom: 5px; font-weight: bold; background: #fffdf2; border: 1px solid #f1c40f; padding: 4px; border-radius: 4px;">
+                第<span id="current-set-display">1</span>セット (2セット先取)<br>
+                SET: Player <span id="set-score-player">0</span> - <span id="set-score-cpu">0</span> CPU
+            </div>
             Player <span id="score-player" style="color:#2980b9;">0</span> - <span id="score-cpu" style="color:#c0392b;">0</span> CPU (3勝先取)
         </div>
         
@@ -714,6 +718,9 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     let cpuWins = 0;
     let turnCount = 0;
     let isProcessingTurn = false;
+    let playerSetWins = 0;
+    let opponentSetWins = 0;
+    let currentSet = 1;
 
     // コインを増やす機能（テスト用に＋ボタンへ追加）
     function addCoins() {
@@ -2121,6 +2128,83 @@ async function declineBattleInvite() {
         console.error("拒否エラー:", e);
     }
 }
+    
+  // ▼ 新規追加: ランクマッチ開始関数 ▼
+    async function startRankMatch() {
+        isRankMatch = true;
+        playerSetWins = 0;
+        opponentSetWins = 0;
+        currentSet = 1;
+        
+        // セット情報UIを表示して更新
+        document.getElementById('set-info').style.display = 'block';
+        updateSetUI();
+
+        // 既存のオンラインマッチング用関数を呼び出す（必要に応じて変更）
+        goToLobbyScreen(); 
+    }
+
+ // ▼ 新規追加: 1セット終了時の処理 ▼
+    async function handleSetEnd(setWinner) {
+        let logEl = document.getElementById('battle-log');
+        
+        if (setWinner === "player") {
+            playerSetWins++;
+            logEl.innerHTML += `<div style="color:#2980b9; font-size: 16px; font-weight:bold; margin-top:5px;">第${currentSet}セット勝利！</div>`;
+        } else if (setWinner === "cpu") {
+            opponentSetWins++;
+            logEl.innerHTML += `<div style="color:#c0392b; font-size: 16px; font-weight:bold; margin-top:5px;">第${currentSet}セット敗北...</div>`;
+        } else {
+            logEl.innerHTML += `<div style="color:#7f8c8d; font-size: 16px; font-weight:bold; margin-top:5px;">第${currentSet}セット 引き分け</div>`;
+        }
+
+        updateSetUI();
+
+        // 2セット先取したかチェック
+        if (playerSetWins >= 2) {
+            setTimeout(() => finishMatch("player"), 2500); // 完全勝利の処理へ（※既存の処理名に合わせてください）
+        } else if (opponentSetWins >= 2) {
+            setTimeout(() => finishMatch("cpu"), 2500); // 完全敗北の処理へ
+        } else {
+            // 次のセットへ移行
+            currentSet++;
+            logEl.innerHTML += `<div style="color:#e67e22; font-weight:bold; margin-top:5px;">次のセットへ...デッキを再構築します</div>`;
+            
+            setTimeout(async () => {
+                // オンライン対戦の場合、Firebaseのフラグをリセットして次のデッキを出せるようにする
+                if (isOnlineBattle && currentRoomId) {
+                    const roomRef = window.doc(window.db, "rooms", currentRoomId);
+                    // 競合を防ぐためホスト側のみがリセットを実行する
+                    if (isHost) {
+                        await window.updateDoc(roomRef, {
+                            hostReady: false,
+                            guestReady: false,
+                            hostDeck: null,
+                            guestDeck: null,
+                            hostCardIndex: null,
+                            guestCardIndex: null
+                        });
+                    }
+                }
+                
+                // ラウンド内スコアをリセット
+                playerWins = 0;
+                cpuWins = 0;
+                turnCount = 0;
+                updateScoreBoard(); // 既存のスコア更新関数
+                
+                // デッキ構築画面へ戻る
+                goToBuildScreen(isOnlineBattle);
+            }, 3500);
+        }
+    }
+    
+    // UI更新用の補助関数
+    function updateSetUI() {
+        document.getElementById('current-set-display').innerText = currentSet;
+        document.getElementById('set-score-player').innerText = playerSetWins;
+        document.getElementById('set-score-cpu').innerText = opponentSetWins;
+    }
     
     // 【修正・差し替え】startRankMatch 関数とホスト部屋作成の補助関数
 async function startRankMatch() {
