@@ -2276,13 +2276,38 @@ async function startRankMatch() {
             }
         } else {
             // 待機中の人がいない場合、自分がホストになって部屋を作る
-            await createRankMatchHostRoom(rankBtn, pName, myRankStr);
-        }
+            // ▼ 追加する関数 ▼
+async function createRankMatchHostRoom(rankBtn, pName, myRankStr) {
+    try {
+        // Firebaseにランクマッチ待機用の部屋を作成
+        const docRef = await window.addDoc(window.collection(window.db, "rooms"), {
+            hostName: pName,
+            hostAvatar: currentAvatar,
+            betAmount: 0,
+            status: "waiting_rank", // ランクマッチ待機状態
+            rank: myRankStr,        // 自分のランクを登録
+            createdAt: new Date()
+        });
+
+        currentRoomId = docRef.id;
+        isHost = true;
+        console.log("ランクマッチのホスト部屋を作成しました。ID: ", currentRoomId);
+
+        // 誰かが入ってくる（statusが"playing"になる）のを監視する
+        const roomRef = window.doc(window.db, "rooms", currentRoomId);
+        unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
+            const data = docSnap.data();
+            if (data && data.status === "playing") {
+                console.log("ランクマッチの相手が見つかりました！");
+                unsubscribeHost();
+                rankBtn.innerText = "🏆 ランクマッチモード";
+                goToBuildScreen(true);
+            }
+        });
     } catch (error) {
-        console.error("ランクマッチエラー:", error);
+        console.error("ランクマッチ部屋の作成に失敗:", error);
         alert("通信エラーが発生しました。");
         rankBtn.innerText = "🏆 ランクマッチモード";
-        rankBtn.disabled = false;
         isRankMatch = false;
         isOnlineBattle = false;
     }
