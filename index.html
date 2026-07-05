@@ -326,7 +326,7 @@
 
     <!-- ▼ 新規追加: アイテム発動カットイン ▼ -->
     <div id="item-cutin-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:200; background:rgba(0,0,0,0.6); justify-content:center; align-items:center;">
-        <div id="item-cutin-content" style="...">
+        <div id="item-cutin-content" style="transform: scale(0); transition: transform 0.3s; text-align: center; color: white; font-weight: bold; font-size: 20px;">
     <img src="探偵の眼鏡.png" class="item-cutin-glasses" alt="探偵の眼鏡">
     <br> 探偵の眼鏡 発動！
 </div>
@@ -601,7 +601,7 @@
     <div style="font-size: 12px; color: #7f8c8d; margin-top: 4px;">開始時、相手の手札が1枚公開される。</div>
 </div>
             <button id="btn-buy-glasses" style="margin-bottom: 0; padding: 10px 15px; font-size: 14px; background: linear-gradient(145deg, #f39c12, #d35400); color: white; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3);" onclick="buyDetectiveGlasses()">購入 (500🪙)</button>
-
+</div>
         <button style="background-color: #7f8c8d; margin-top: auto;" onclick="openShopMenu()">⬅️ メニューに戻る</button>
     </div>
     
@@ -908,7 +908,6 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         document.getElementById(`bet-btn-${amount}`).classList.add('selected');
         
         document.getElementById('btn-lobby-entry').disabled = false;
-        document.getElementById('btn-lobby-challenge').disabled = false;
     }
 
     // NPC生成機能を削除
