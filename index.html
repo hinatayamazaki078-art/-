@@ -782,6 +782,8 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         // エントリー中の場合は払い戻し＆キャンセルを執行
         await cancelEntry();
 
+        document.getElementById('set-info').style.display = 'none';
+
         // stopBGM(); // ← コメントアウト（または行ごと削除）してBGMを止めないようにする
         
         showScreen('screen-home');
@@ -2161,10 +2163,19 @@ async function declineBattleInvite() {
         updateSetUI();
 
         // 2セット先取したかチェック
-        if (playerSetWins >= 2) {
-            setTimeout(() => finishMatch("player"), 2500); // 完全勝利の処理へ（※既存の処理名に合わせてください）
-        } else if (opponentSetWins >= 2) {
-            setTimeout(() => finishMatch("cpu"), 2500); // 完全敗北の処理へ
+        if (playerSetWins >= 2 || opponentSetWins >= 2) {
+            setTimeout(() => {
+                const returnBtn = document.getElementById('btn-return-home');
+                returnBtn.style.display = 'block'; // ロビーに戻るボタンを表示
+                
+                if (playerSetWins >= 2) {
+                    logEl.innerHTML += `<div class="win-text">🎉 2セット先取！あなたの完全勝利です！ 🎉</div>`;
+                    updateRank(true);  // 勝利としてランクを更新
+                } else {
+                    logEl.innerHTML += `<div style="color:#c0392b; font-size: 16px; font-weight:bold; margin-top:4px;">❌ 相手に2セット先取されました。完全敗北です...</div>`;
+                    updateRank(false); // 敗北としてランクを更新
+                }
+            }, 2500);
         } else {
             // 次のセットへ移行
             currentSet++;
@@ -2215,6 +2226,11 @@ async function startRankMatch() {
         await cancelRankMatch();
         return;
     }
+    playerSetWins = 0;
+    opponentSetWins = 0;
+    currentSet = 1;
+    document.getElementById('set-info').style.display = 'block';
+    updateSetUI();
 
     isRankMatch = true;
     isOnlineBattle = true;
@@ -2342,11 +2358,22 @@ async function createRankMatchHostRoom(rankBtn, pName, myRankStr) {
         }
 
         if (isEnded) {
-        returnBtn.style.display = 'block';
+            // 🌟 ランクマッチの場合はセット終了処理へ引き渡す
+            if (isRankMatch) {
+                let setWinner = "draw";
+                if (isPlayerWin && !isDraw) setWinner = "player";
+                if (!isPlayerWin && !isDraw) setWinner = "cpu";
+                
+                handleSetEnd(setWinner);
+                return; // ここで処理を抜けることで、通常の終了処理（戻るボタン表示など）を防ぐ
+            }
 
-            if (isRankMatch && !isDraw) {
-            updateRank(isPlayerWin); // 勝ったか負けたかを渡してランクを計算
-        }
+            // ↓ 通常マッチ（練習・オンライン掛金戦）の終了処理（今までのまま）
+            returnBtn.style.display = 'block';
+
+            if (isRankMatch && !isDraw) { // ※ここは通常マッチなら通らないので実質無視されます
+                updateRank(isPlayerWin); 
+            }
         
         if (isDraw) {
             if (isOnlineBattle) {
