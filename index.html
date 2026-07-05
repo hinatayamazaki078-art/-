@@ -2131,85 +2131,6 @@ async function declineBattleInvite() {
     }
 }
     
-  // ▼ 新規追加: ランクマッチ開始関数 ▼
-    async function startRankMatch() {
-        isRankMatch = true;
-        playerSetWins = 0;
-        opponentSetWins = 0;
-        currentSet = 1;
-        
-        // セット情報UIを表示して更新
-        document.getElementById('set-info').style.display = 'block';
-        updateSetUI();
-
-        // 既存のオンラインマッチング用関数を呼び出す（必要に応じて変更）
-        goToLobbyScreen(); 
-    }
-
- // ▼ 新規追加: 1セット終了時の処理 ▼
-    async function handleSetEnd(setWinner) {
-        let logEl = document.getElementById('battle-log');
-        
-        if (setWinner === "player") {
-            playerSetWins++;
-            logEl.innerHTML += `<div style="color:#2980b9; font-size: 16px; font-weight:bold; margin-top:5px;">第${currentSet}セット勝利！</div>`;
-        } else if (setWinner === "cpu") {
-            opponentSetWins++;
-            logEl.innerHTML += `<div style="color:#c0392b; font-size: 16px; font-weight:bold; margin-top:5px;">第${currentSet}セット敗北...</div>`;
-        } else {
-            logEl.innerHTML += `<div style="color:#7f8c8d; font-size: 16px; font-weight:bold; margin-top:5px;">第${currentSet}セット 引き分け</div>`;
-        }
-
-        updateSetUI();
-
-        // 2セット先取したかチェック
-        if (playerSetWins >= 2 || opponentSetWins >= 2) {
-            setTimeout(() => {
-                const returnBtn = document.getElementById('btn-return-home');
-                returnBtn.style.display = 'block'; // ロビーに戻るボタンを表示
-                
-                if (playerSetWins >= 2) {
-                    logEl.innerHTML += `<div class="win-text">🎉 2セット先取！あなたの完全勝利です！ 🎉</div>`;
-                    updateRank(true);  // 勝利としてランクを更新
-                } else {
-                    logEl.innerHTML += `<div style="color:#c0392b; font-size: 16px; font-weight:bold; margin-top:4px;">❌ 相手に2セット先取されました。完全敗北です...</div>`;
-                    updateRank(false); // 敗北としてランクを更新
-                }
-            }, 2500);
-        } else {
-            // 次のセットへ移行
-            currentSet++;
-            logEl.innerHTML += `<div style="color:#e67e22; font-weight:bold; margin-top:5px;">次のセットへ...デッキを再構築します</div>`;
-            
-            setTimeout(async () => {
-                // オンライン対戦の場合、Firebaseのフラグをリセットして次のデッキを出せるようにする
-                if (isOnlineBattle && currentRoomId) {
-                    const roomRef = window.doc(window.db, "rooms", currentRoomId);
-                    // 競合を防ぐためホスト側のみがリセットを実行する
-                    if (isHost) {
-                        await window.updateDoc(roomRef, {
-                            hostReady: false,
-                            guestReady: false,
-                            hostDeck: null,
-                            guestDeck: null,
-                            hostCardIndex: null,
-                            guestCardIndex: null
-                        });
-                    }
-                }
-                
-                // ラウンド内スコアをリセット
-                playerWins = 0;
-                cpuWins = 0;
-                turnCount = 0;
-                updateScoreBoard(); // 既存のスコア更新関数
-                
-                // デッキ構築画面へ戻る
-                goToBuildScreen(isOnlineBattle);
-            }, 3500);
-        }
-    }
-    
     // UI更新用の補助関数
     function updateSetUI() {
         document.getElementById('current-set-display').innerText = currentSet;
@@ -2279,55 +2200,66 @@ async function startRankMatch() {
                         guestAvatar: currentAvatar
                     });
                 });
-
-                // マッチングが安全に成功した場合の処理
+                
+                console.log("ランクマッチ成立！ゲストとして参加");
                 rankBtn.innerText = "🏆 ランクマッチモード";
-                rankBtn.disabled = false;
                 goToBuildScreen(true);
-
-            } catch (transactionError) {
-                console.warn("マッチング競合を検知したため、自身がホストになります:", transactionError);
-                // 相手がタッチの差でキャンセルしていた場合は、自分がホストになって部屋を作る処理へフォールバック
-                await createRankMatchHostRoom(rankBtn, pName, myRankStr);
+                
+            } catch (error) {
+                console.log("マッチング失敗（競合）:", error);
+                // 失敗した場合は自分がホストとして待機部屋を作る
+                await createRankHostRoom(pName, myRankStr, rankBtn);
             }
+
         } else {
-            // 待機中の人がいない場合、自分がホストになって部屋を作る
-            await createRankMatchHostRoom(rankBtn, pName, myRankStr);
+            // 同じランクの待機部屋がない場合、自分がホストとして部屋を作成
+            await createRankHostRoom(pName, myRankStr, rankBtn);
         }
-    } catch (error) {
-        console.error("ランクマッチエラー:", error);
+
+    } catch (e) {
+        console.error("ランクマッチ検索エラー:", e);
         alert("通信エラーが発生しました。");
         rankBtn.innerText = "🏆 ランクマッチモード";
-        rankBtn.disabled = false;
         isRankMatch = false;
         isOnlineBattle = false;
     }
 }
 
-// ホスト部屋作成処理を関数に切り出し（競合時にも再利用するため）
-async function createRankMatchHostRoom(rankBtn, pName, myRankStr) {
+// ▼ 新規追加: ホストとしてランクマッチ部屋を作成して待機する関数 ▼
+async function createRankHostRoom(pName, myRankStr, rankBtn) {
     isHost = true;
-    const docRef = await window.addDoc(window.collection(window.db, "rooms"), {
-        hostName: pName,
-        hostAvatar: currentAvatar,
-        betAmount: 0,
-        status: "waiting_rank",
-        rank: myRankStr,
-        createdAt: new Date().getTime()
-    });
-    currentRoomId = docRef.id;
-
-    // 誰かが入ってくるのを監視する
-    const roomRef = window.doc(window.db, "rooms", currentRoomId);
-    unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
-        const data = docSnap.data();
-        if (data && data.status === "playing") {
-            unsubscribeHost(); // 監視ストップ
-            rankBtn.innerText = "🏆 ランクマッチモード";
-            rankBtn.disabled = false;
-            goToBuildScreen(true);
-        }
-    });
+    try {
+        const docRef = await window.addDoc(window.collection(window.db, "rooms"), {
+            hostName: pName,
+            hostAvatar: currentAvatar,
+            betAmount: 0,
+            status: "waiting_rank", // ランクマッチ専用の待機ステータス
+            rank: myRankStr,        // 自分のランクを保存して同ランクとマッチさせる
+            createdAt: new Date()
+        });
+        
+        currentRoomId = docRef.id;
+        console.log("ランクマッチの待機部屋を作成:", currentRoomId);
+        
+        // 相手が入ってくる（statusがplayingになる）のを監視
+        const roomRef = window.doc(window.db, "rooms", currentRoomId);
+        unsubscribeHost = window.onSnapshot(roomRef, (docSnap) => {
+            const data = docSnap.data();
+            if (data && data.status === "playing") {
+                console.log("挑戦者が現れました（ランクマッチ）！");
+                if (unsubscribeHost) { unsubscribeHost(); unsubscribeHost = null; }
+                rankBtn.innerText = "🏆 ランクマッチモード";
+                goToBuildScreen(true);
+            }
+        });
+        
+    } catch (error) {
+        console.error("ランク部屋作成エラー:", error);
+        alert("通信エラーが発生しました。");
+        rankBtn.innerText = "🏆 ランクマッチモード";
+        isRankMatch = false;
+        isOnlineBattle = false;
+    }
 }
     
     function updateScoreBoard() {
