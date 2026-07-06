@@ -1792,7 +1792,7 @@ function goToSpecialShopScreen() {
 }
 
 // =========================================
-// 新規追加：総資産ランキング機能
+// 修正版：総資産ランキング機能
 // =========================================
 
 async function openRanking() {
@@ -1801,6 +1801,9 @@ async function openRanking() {
     list.innerHTML = '<div style="color:white; text-align:center; margin-top:20px;">ランキング取得中...</div>';
 
     try {
+        // 【追加】ランキングを開く直前に、自分の最新の総資産データを確実にサーバーへ保存・同期する
+        await saveMyProfile();
+
         // Firebaseから総資産額（totalAssets）の降順で上位50名を取得
         const q = window.query(
             window.collection(window.db, "users"),
@@ -1816,11 +1819,12 @@ async function openRanking() {
             const data = docSnap.data();
             const safeLevel = data.level || 1;
             const safeAssets = data.totalAssets || 0;
+            const avatar = data.avatar || ''; // 安全対策：未定義の場合は空文字にする
             
-            // アバターHTMLの生成
-            const avatarHtml = (data.avatar && data.avatar.includes('.png'))
-                ? `<img src="${data.avatar}" style="width: 100%; height: 100%; object-fit: cover;">` 
-                : `<div style="font-size: 24px;">${data.avatar || '🤖'}</div>`;
+            // 【修正】avatar が正常な文字列である場合のみ .png の判定を行う（エラー防止）
+            const avatarHtml = (typeof avatar === 'string' && avatar.includes('.png'))
+                ? `<img src="${avatar}" style="width: 100%; height: 100%; object-fit: cover;">` 
+                : `<div style="font-size: 24px;">${avatar || '🤖'}</div>`;
             
             // リストにプレイヤーを描画 (アバタータップでプロフィール表示)
             list.innerHTML += `
@@ -1832,7 +1836,7 @@ async function openRanking() {
                     </div>
                     
                     <div style="flex-grow: 1; display: flex; flex-direction: column;">
-                        <div style="color: #fff; font-weight: bold; font-size: 15px;">${data.name} <span style="font-size: 12px; color: #bdc3c7;">Lv:${safeLevel}</span></div>
+                        <div style="color: #fff; font-weight: bold; font-size: 15px;">${data.name || 'ゲスト'} <span style="font-size: 12px; color: #bdc3c7;">Lv:${safeLevel}</span></div>
                         <div style="color: #f1c40f; font-size: 13px; margin-top: 2px;">🪙 ${safeAssets.toLocaleString()}</div>
                     </div>
                 </div>
@@ -1849,7 +1853,6 @@ async function openRanking() {
         list.innerHTML = '<div style="color:#e74c3c; text-align:center; margin-top:20px;">ランキングの取得に失敗しました。<br>データベースのインデックス設定が必要な場合があります。</div>';
     }
 }
-
 function closeRanking() {
     document.getElementById('ranking-overlay').style.display = 'none';
 }
