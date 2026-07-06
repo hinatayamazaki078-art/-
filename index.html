@@ -415,6 +415,37 @@
         </div>
     </div>
 
+    <!-- ▼ 新規追加: 総資産ランキング用オーバーレイ ▼ -->
+    <div id="ranking-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:115; background:rgba(0,0,0,0.95); flex-direction:column; padding: 20px; box-sizing: border-box;">
+        <h2 style="color:#f1c40f; text-align:center; margin-top:10px;">総資産ランキング</h2>
+        <div id="ranking-list" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+            <!-- ここにランキングアイテムが追加されます -->
+        </div>
+        <button onclick="closeRanking()" style="background-color:#7f8c8d; width: 100%;">閉じる</button>
+    </div>
+
+    <!-- ▼ 新規追加: 他プレイヤーのプロフィール用オーバーレイ ▼ -->
+    <div id="other-profile-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:120; background:rgba(0,0,0,0.85); flex-direction:column; justify-content:center; align-items:center; padding: 15px; box-sizing: border-box;">
+        <div style="position: relative; width: 100%; max-width: 400px; aspect-ratio: 1.55 / 1; min-height: 220px; background-color: #000; background-image: url('プロフィールカード.png'); background-size: cover; background-position: center; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+            
+            <div style="position: absolute; top: 22%; left: 8%; width: 27%; height: 42%; border-radius: 50%; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                <div id="other-profile-avatar" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;"></div>
+                <style>
+                    #other-profile-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+                </style>
+            </div>
+
+            <div id="other-profile-name-text" style="position: absolute; top: 29.5%; left: 41%; width: 52%; height: 10%; display: flex; align-items: center; justify-content: center; color: #f1c40f; font-size: 16px; font-weight: bold; letter-spacing: 2px;"></div>
+            <div id="other-profile-assets-text" style="position: absolute; top: 54.5%; left: 52%; width: 40%; height: 10%; display: flex; align-items: center; justify-content: flex-start; color: #fff; font-size: 16px; font-weight: bold;"></div>
+            <div id="other-profile-level-text" style="position: absolute; top: 74%; left: 40.5%; width: 10%; height: 13%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; text-shadow: 1px 1px 2px #000;"></div>
+            <div id="other-profile-rank-text" style="position: absolute; top: 74%; left: 52%; width: 40%; height: 13%; display: flex; align-items: center; justify-content: flex-start; color: #f1c40f; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px #000;"></div>
+        </div>
+        
+        <div style="width: 100%; max-width: 400px; margin-top: 30px;">
+            <button onclick="closeOtherProfile()" style="width: 100%; background-color: #7f8c8d;">閉じる</button>
+        </div>
+    </div>
+
     <div id="character-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:rgba(0,0,0,0.8); justify-content:center; align-items:center;" onclick="closeCharacter()">
         <div id="gacha-result-avatar" style="font-size: 180px; animation: fadeIn 0.5s;"></div>
     </div>
@@ -629,21 +660,31 @@ if (!myPlayerId) {
     localStorage.setItem('myPlayerId', myPlayerId);
 }
 
-// 自分のプロフィール（名前・アバター・状態）をFirebaseに保存する関数
+// 自分のプロフィール（名前・アバター・状態・資産など）をFirebaseに保存する関数
 async function saveMyProfile() {
     try {
         const userRef = window.doc(window.db, "users", myPlayerId);
         const pName = document.getElementById('player-name').innerText.replace('👑 ', '');
+        
+        // プロフィール画面と同様に装備している資産の合計を計算
+        let totalAssets = 0;
+        for (let i = 0; i < 10; i++) {
+            if (equippedAssets[i]) {
+                totalAssets += equippedAssets[i].price;
+            }
+        }
         
         // setDoc({ merge: true }) でデータを新規作成 または 上書き更新
         await window.setDoc(userRef, {
             name: pName,
             avatar: currentAvatar,
             isOnline: true,
-            lastActive: new Date().toISOString(), // 最後にログインした時間
+            lastActive: new Date().toISOString(),
             rankTier: playerRankTier,
             rankSub: playerRankSub,
-            rankString: getRankString()
+            rankString: getRankString(),
+            level: playerLevel,       // ランキング表示用に追加
+            totalAssets: totalAssets  // ランキングソート用に追加
         }, { merge: true });
         
         console.log("プロフィールをサーバーに保存しました！ ID:", myPlayerId);
@@ -1747,7 +1788,104 @@ function goToSpecialShopScreen() {
     }
 }
 
-function collectAfkRewards() {
+// =========================================
+// 新規追加：総資産ランキング機能
+// =========================================
+
+async function openRanking() {
+    document.getElementById('ranking-overlay').style.display = 'flex';
+    const list = document.getElementById('ranking-list');
+    list.innerHTML = '<div style="color:white; text-align:center; margin-top:20px;">ランキング取得中...</div>';
+
+    try {
+        // Firebaseから総資産額（totalAssets）の降順で上位50名を取得
+        const q = window.query(
+            window.collection(window.db, "users"),
+            window.orderBy("totalAssets", "desc"),
+            window.limit(50)
+        );
+        const querySnapshot = await window.getDocs(q);
+        
+        list.innerHTML = '';
+        let rank = 1;
+        
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const safeLevel = data.level || 1;
+            const safeAssets = data.totalAssets || 0;
+            
+            // アバターHTMLの生成
+            const avatarHtml = (data.avatar && data.avatar.includes('.png'))
+                ? `<img src="${data.avatar}" style="width: 100%; height: 100%; object-fit: cover;">` 
+                : `<div style="font-size: 24px;">${data.avatar || '🤖'}</div>`;
+            
+            // リストにプレイヤーを描画 (アバタータップでプロフィール表示)
+            list.innerHTML += `
+                <div style="display: flex; align-items: center; background: #2c3e50; border: 1px solid #f1c40f; border-radius: 8px; padding: 10px; gap: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                    <div style="font-size: 20px; font-weight: bold; color: #f1c40f; width: 35px; text-align: center;">${rank}</div>
+                    
+                    <div onclick="openOtherPlayerProfile('${docSnap.id}')" style="width: 50px; height: 50px; border-radius: 50%; overflow: hidden; background: #000; display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid #bdc3c7;" title="プロフィールを見る">
+                        ${avatarHtml}
+                    </div>
+                    
+                    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                        <div style="color: #fff; font-weight: bold; font-size: 15px;">${data.name} <span style="font-size: 12px; color: #bdc3c7;">Lv:${safeLevel}</span></div>
+                        <div style="color: #f1c40f; font-size: 13px; margin-top: 2px;">🪙 ${safeAssets.toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+            rank++;
+        });
+        
+        if(list.innerHTML === '') {
+            list.innerHTML = '<div style="color:#7f8c8d; text-align:center; margin-top:20px;">まだデータがありません</div>';
+        }
+
+    } catch(e) {
+        console.error("ランキング取得エラー:", e);
+        list.innerHTML = '<div style="color:#e74c3c; text-align:center; margin-top:20px;">ランキングの取得に失敗しました。<br>データベースのインデックス設定が必要な場合があります。</div>';
+    }
+}
+
+function closeRanking() {
+    document.getElementById('ranking-overlay').style.display = 'none';
+}
+
+async function openOtherPlayerProfile(userId) {
+    try {
+        const userRef = window.doc(window.db, "users", userId);
+        const docSnap = await window.getDoc(userRef);
+        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            
+            document.getElementById('other-profile-name-text').innerText = data.name || "ゲスト";
+            document.getElementById('other-profile-assets-text').innerText = '🪙 ' + (data.totalAssets || 0).toLocaleString();
+            document.getElementById('other-profile-level-text').innerText = data.level || 1;
+            document.getElementById('other-profile-rank-text').innerText = "🏆 " + (data.rankString || "未分類");
+
+            const avatarDiv = document.getElementById('other-profile-avatar');
+            if (data.avatar && data.avatar.includes('.png')) {
+                avatarDiv.innerHTML = `<img src="${data.avatar}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 10%; transform: scale(1.6);">`;
+            } else {
+                avatarDiv.innerHTML = `<div style="font-size: 50px;">${data.avatar || '👤'}</div>`;
+            }
+
+            document.getElementById('other-profile-overlay').style.display = 'flex';
+        } else {
+            alert("プレイヤーデータが見つかりません。");
+        }
+    } catch (e) {
+        console.error("プロフィール取得エラー:", e);
+        alert("通信エラーが発生しました。");
+    }
+}
+
+function closeOtherProfile() {
+    document.getElementById('other-profile-overlay').style.display = 'none';
+}
+    
+    function collectAfkRewards() {
     coins += afkEarnedCoins;
     afkEarnedCoins = 0;
     updateCoinUI();
