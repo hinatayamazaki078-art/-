@@ -2563,7 +2563,7 @@ async function nextTurn() {
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     // 👇 末尾に , runTransaction を追加しました
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, getDoc, getDocs, query, where, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, getDoc, getDocs, query, where, runTransaction, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBgPo28dabejPrKRD-UabxQKrTZCjmdnuU",
@@ -2587,7 +2587,9 @@ async function nextTurn() {
     window.setDoc = setDoc;
     window.getDoc = getDoc;   
     window.getDocs = getDocs; 
-    window.query = query;     
+    window.query = query;
+    window.orderBy = orderBy;
+window.limit = limit;
     window.where = where;
     window.runTransaction = runTransaction;
     
