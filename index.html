@@ -1264,9 +1264,10 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                 // 絵文字の場合は元の仕様通り大きな文字サイズで表示する
                 iconHtml = `<div style="font-size: 32px;">${item.icon}</div>`;
             }
+
             container.innerHTML += `
                 <div class="shop-item">
-                    <div style="font-size: 32px;">${item.icon}</div>
+                    ${iconHtml}
                     <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">${item.name}</div>
                     <div style="color: #f1c40f; font-weight: bold; font-size: 13px; background: #1a1a1a; padding: 2px 8px; border-radius: 12px; width: fit-content; margin: 0 auto;">
                         🪙 ${item.price.toLocaleString()}
