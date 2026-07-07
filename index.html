@@ -622,7 +622,7 @@
         </div>
         
         <div id="sell-controls" style="display: none; background: #fadbd8; padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; border: 1px solid #e74c3c;">
-            <div style="font-weight: bold; color: #c0392b; margin-bottom: 8px; font-size: 13px;">売却モード (選択中のアイテムを半額で売ります)</div>
+            <div style="font-weight: bold; color: #c0392b; margin-bottom: 8px; font-size: 13px;">売却モード (選択中のアイテムを購入額で売ります)</div>
             <div style="display: flex; gap: 10px;">
                 <button style="flex: 1; padding: 8px; font-size: 13px; background: #c0392b; margin: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" onclick="executeSell()">確定して売却</button>
                 <button style="flex: 1; padding: 8px; font-size: 13px; background: #7f8c8d; margin: 0;" onclick="toggleSellMode()">キャンセル</button>
@@ -1246,7 +1246,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             if (isSellMode) {
                 const isSelected = selectedForSale.includes(index);
                 const itemClass = isSelected ? 'asset-item sell-selected' : 'asset-item';
-                const sellPrice = Math.floor(item.price / 2); // 売却額
+                const sellPrice = item.price; // 売却額
                 
                 listContainer.innerHTML += `
                     <div class="${itemClass}" onclick="toggleSellSelection(${index})" title="タップで売却選択/解除">
@@ -1997,7 +1997,7 @@ async function openRanking() {
         selectedForSale.forEach(index => {
             const item = ownedAssets[index];
             // 売却額を設定（全額返還にしたい場合は Math.floor と / 2 を消して単に item.price にしてください）
-            const sellPrice = Math.floor(item.price / 2); 
+            const sellPrice = item.price; // 売却額
             totalSellPrice += sellPrice;
             ownedAssets.splice(index, 1); // カバンから削除
         });
