@@ -1824,15 +1824,33 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(listenForInvites, 1500);
 });
 
-window.addEventListener('beforeunload', saveGameState);
+// ▼▼ 画面を閉じたり、裏に引っ込めた時の処理（決定版） ▼▼
+
+// 待機中に離脱したら、部屋を自動キャンセルする共通の関数
+function cancelWaitingRoomIfNeeded() {
+    if (isHost && currentRoomId && !document.getElementById('screen-battle').classList.contains('active')) {
+        const roomRef = window.doc(window.db, "rooms", currentRoomId);
+        window.updateDoc(roomRef, { status: "cancelled" });
+        console.log("離脱を検知したため、待機部屋をキャンセルしました");
+    }
+}
+
+// パソコンでタブを閉じたりリロードしたとき
+window.addEventListener('beforeunload', () => {
+    saveGameState();
+    cancelWaitingRoomIfNeeded(); 
+});
+
+// スマホでホーム画面に戻ったり、タブを切り替えたとき（一番確実！）
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         saveGameState(); 
+        cancelWaitingRoomIfNeeded(); // ここで部屋を消す処理を実行！
     } else if (document.visibilityState === 'visible') {
         checkAfkRewards(); 
     }
 });
-
+    
 function saveGameState() {
     if (isOnlineBattle && document.getElementById('screen-battle').classList.contains('active')) {
         handleSelfDisconnect();
