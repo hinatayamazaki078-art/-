@@ -519,11 +519,16 @@
     </div>
 
     <div id="screen-bet-select" class="screen">
-        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">掛金選択</h2>
-        <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">バトルに賭けるコインを選択してください。</p>
-        <div class="bet-grid" id="bet-buttons-container"></div>
+        <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">掛金入力</h2>
+        <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">バトルに賭けるコインを入力してください。</p>
+        
+        <!-- 追加：掛金入力欄 -->
+        <div style="text-align: center; margin-bottom: 15px;">
+            <input type="number" id="custom-bet-input" placeholder="掛金を入力" min="1" style="padding: 12px; font-size: 18px; border-radius: 8px; border: 2px solid #bdc3c7; width: 70%; text-align: center; box-sizing: border-box;" oninput="validateCustomBet()">
+        </div>
+        
         <div style="text-align: center; font-weight: bold; margin-bottom: 15px; color: #2c3e50;">
-            選択中の掛金: <span id="selected-bet-display" style="color: #d35400; font-size: 20px;">未選択</span> コイン
+            設定した掛金: <span id="selected-bet-display" style="color: #d35400; font-size: 20px;">0</span> コイン
         </div>
         <div class="action-area">
             <button id="btn-lobby-entry" class="gacha-btn" style="background: linear-gradient(145deg, #2ecc71, #27ae60); color:white;" disabled onclick="handleLobbyAction('entry')">🚪 エントリー</button>
@@ -951,40 +956,48 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     async function goToBetSelectScreen() {
         if (matchingTimeout) clearTimeout(matchingTimeout);
         
-        // ロビーから掛金選択に戻る際も、エントリー状態なら安全に払い戻す
         await cancelEntry();
 
         currentBet = 0;
-        document.getElementById('selected-bet-display').innerText = '未選択';
+        document.getElementById('selected-bet-display').innerText = '0';
         document.getElementById('btn-lobby-entry').disabled = true;
         
-        renderBetButtons();
+        // 追加：画面を開いたときに入力欄を空にする
+        const betInput = document.getElementById('custom-bet-input');
+        if (betInput) betInput.value = '';
+        
+        // renderBetButtons(); ← ボタン一覧を作る機能は使わないので削除またはコメントアウト
         showScreen('screen-bet-select');
     }
-    
-    function renderBetButtons() {
-        const container = document.getElementById('bet-buttons-container');
-        container.innerHTML = '';
-        betAmounts.forEach(amount => {
-            const isInsufficient = coins < amount; // コイン不足なら選択不可
-            container.innerHTML += `
-                <button class="bet-btn" id="bet-btn-${amount}" ${isInsufficient ? 'disabled' : ''} onclick="selectBet(${amount})">
-                    🪙 ${amount.toLocaleString()}
-                </button>
-            `;
-        });
-    }
 
-    function selectBet(amount) {
+    // 新規追加：入力された金額をチェックして判定する機能
+    function validateCustomBet() {
+        const input = document.getElementById('custom-bet-input');
+        const display = document.getElementById('selected-bet-display');
+        const entryBtn = document.getElementById('btn-lobby-entry');
+        
+        // 入力された文字を数値に変換
+        let amount = parseInt(input.value);
+
+        // 空白、0以下、数字以外の場合はボタンを押せなくする
+        if (isNaN(amount) || amount <= 0) {
+            currentBet = 0;
+            display.innerText = '0';
+            entryBtn.disabled = true;
+            return;
+        }
+
         currentBet = amount;
-        document.getElementById('selected-bet-display').innerText = amount.toLocaleString();
-        
-        document.querySelectorAll('.bet-btn').forEach(btn => btn.classList.remove('selected'));
-        document.getElementById(`bet-btn-${amount}`).classList.add('selected');
-        
-        document.getElementById('btn-lobby-entry').disabled = false;
-    }
 
+        // 自分の所持コインを超えているかどうかの判定
+        if (amount > coins) {
+            display.innerHTML = `<span style="color: #e74c3c;">${amount.toLocaleString()} (コイン不足)</span>`;
+            entryBtn.disabled = true;
+        } else {
+            display.innerHTML = amount.toLocaleString();
+            entryBtn.disabled = false;
+        }
+    }
     // NPC生成機能を削除
     function generateNPCSeats() {
         lobbySeats = [];
