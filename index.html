@@ -1175,14 +1175,25 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         
         let totalValue = 0; 
 
+        // 1. 装備スロットの表示処理
         for (let i = 0; i < 10; i++) {
             const item = equippedAssets[i];
             
             if (item) {
                 totalValue += item.price; 
+                
+                // ▼ 追加：画像か絵文字かを判別して表示する処理
+                let iconHtml = '';
+                if (item.icon.includes('.png')) {
+                    // 画像の場合は img タグにする
+                    iconHtml = `<img src="${item.icon}" style="width: 80%; height: 80%; object-fit: contain;">`;
+                } else {
+                    iconHtml = item.icon;
+                }
+
                 slotsContainer.innerHTML += `
                     <div class="asset-slot equipped" onclick="unequipAsset(${i})" title="${item.name} (タップで外す)">
-                        ${item.icon}
+                        ${iconHtml}
                     </div>
                 `;
             } else {
@@ -1203,10 +1214,19 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
             return;
         }
 
+        // 2. 所持している資産リストの表示処理
         ownedAssets.forEach(item => {
+            // ▼ 追加：画像か絵文字かを判別して表示する処理
+            let iconHtml = '';
+            if (item.icon.includes('.png')) {
+                iconHtml = `<img src="${item.icon}" style="width: 24px; height: 24px; object-fit: contain;">`;
+            } else {
+                iconHtml = `<div style="font-size: 24px;">${item.icon}</div>`;
+            }
+
             listContainer.innerHTML += `
                 <div class="asset-item" onclick="equipAsset(${item.id})" title="タップで装備">
-                    <div style="font-size: 24px;">${item.icon}</div>
+                    ${iconHtml}
                     <div style="font-size: 11px; font-weight: bold; margin-top:4px; color:#2c3e50;">${item.name}</div>
                     <div style="font-size: 10px; color: #7f8c8d; margin-top:2px;">🪙 ${item.price.toLocaleString()}</div>
                 </div>
