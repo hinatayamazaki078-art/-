@@ -724,11 +724,7 @@ let equippedItem = null; // 現在装備しているアイテム（例: "glasses
 
     // ▼ 追加: プレイヤーの資産管理用データ ▼
     // テスト用に、最初から3つの資産をカバン（所持リスト）に持たせておきます
-    let ownedAssets = JSON.parse(localStorage.getItem('ownedAssets')) || [
-    { id: 1, name: "高級ブランド時計", price: 5000, icon: "⌚" },
-    { id: 3, name: "VIPな王冠", price: 120000, icon: "👑" },
-    { id: 6, name: "純金インゴット", price: 25000, icon: "🪙" }
-];
+    let ownedAssets = JSON.parse(localStorage.getItem('ownedAssets')) || [];
 
 let equippedAssets = JSON.parse(localStorage.getItem('equippedAssets')) || Array(10).fill(null);
 
