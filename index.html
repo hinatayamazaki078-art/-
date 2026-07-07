@@ -306,6 +306,16 @@
             margin-bottom: 10px;
         }
     
+    /* =========================================
+           追加：売却システム用スタイル
+           ========================================= */
+        .asset-item.sell-selected {
+            border: 2px solid #e74c3c;
+            background-color: #fadbd8;
+            transform: scale(0.95);
+            box-shadow: inset 0 0 10px rgba(231, 76, 60, 0.3);
+        }
+    
     </style>
 </head>
 <body>
@@ -604,11 +614,22 @@
         </p>
         
         <div id="asset-slots" class="asset-grid">
-            <!-- ここに装備スロットが10個並びます -->
+            </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+            <h3 style="color: #2c3e50; font-size: 16px; margin: 0;">所持している資産</h3>
+            <button id="btn-toggle-sell" style="padding: 6px 12px; font-size: 12px; background: linear-gradient(145deg, #e74c3c, #c0392b); border: 1px solid #fff; margin: 0;" onclick="toggleSellMode()">💰 売る</button>
+        </div>
+        
+        <div id="sell-controls" style="display: none; background: #fadbd8; padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; border: 1px solid #e74c3c;">
+            <div style="font-weight: bold; color: #c0392b; margin-bottom: 8px; font-size: 13px;">売却モード (選択中のアイテムを半額で売ります)</div>
+            <div style="display: flex; gap: 10px;">
+                <button style="flex: 1; padding: 8px; font-size: 13px; background: #c0392b; margin: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);" onclick="executeSell()">確定して売却</button>
+                <button style="flex: 1; padding: 8px; font-size: 13px; background: #7f8c8d; margin: 0;" onclick="toggleSellMode()">キャンセル</button>
+            </div>
         </div>
 
-        <h3 style="color: #2c3e50; margin-top: 15px; font-size: 16px;">所持している資産</h3>
-        <div id="owned-assets-list" class="asset-list">
+        <div id="owned-assets-list" class="asset-list" style="margin-top: 5px;">
             <div style="color:#7f8c8d; text-align:center; width:100%;">まだ資産を持っていません。ショップで購入しましょう！</div>
         </div>
 
@@ -727,6 +748,8 @@ let equippedItem = null; // 現在装備しているアイテム（例: "glasses
     let ownedAssets = JSON.parse(localStorage.getItem('ownedAssets')) || [];
 
 let equippedAssets = JSON.parse(localStorage.getItem('equippedAssets')) || Array(10).fill(null);
+    let isSellMode = false;   // 売却モードかどうかを判定するフラグ
+let selectedForSale = []; // 売るために選択されたアイテムのインデックス番号を保存
 
 let unlockedAvatars = JSON.parse(localStorage.getItem('unlockedAvatars')) || ['キャラ1.png', 'キャラ2.png'];
 let currentAvatar = localStorage.getItem('currentAvatar') || 'キャラ1.png';
@@ -1211,8 +1234,7 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         }
 
         // 2. 所持している資産リストの表示処理
-        ownedAssets.forEach(item => {
-            // ▼ 追加：画像か絵文字かを判別して表示する処理
+        ownedAssets.forEach((item, index) => { // ★引数に index を追加
             let iconHtml = '';
             if (item.icon.includes('.png')) {
                 iconHtml = `<img src="${item.icon}" style="width: 24px; height: 24px; object-fit: contain;">`;
@@ -1220,15 +1242,29 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
                 iconHtml = `<div style="font-size: 24px;">${item.icon}</div>`;
             }
 
-            listContainer.innerHTML += `
-                <div class="asset-item" onclick="equipAsset(${item.id})" title="タップで装備">
-                    ${iconHtml}
-                    <div style="font-size: 11px; font-weight: bold; margin-top:4px; color:#2c3e50;">${item.name}</div>
-                    <div style="font-size: 10px; color: #7f8c8d; margin-top:2px;">🪙 ${item.price.toLocaleString()}</div>
-                </div>
-            `;
+            // ★売却モードかどうかで挙動とデザインを分岐
+            if (isSellMode) {
+                const isSelected = selectedForSale.includes(index);
+                const itemClass = isSelected ? 'asset-item sell-selected' : 'asset-item';
+                const sellPrice = Math.floor(item.price / 2); // 売却額
+                
+                listContainer.innerHTML += `
+                    <div class="${itemClass}" onclick="toggleSellSelection(${index})" title="タップで売却選択/解除">
+                        ${iconHtml}
+                        <div style="font-size: 11px; font-weight: bold; margin-top:4px; color:#2c3e50;">${item.name}</div>
+                        <div style="font-size: 10px; color: #c0392b; margin-top:2px;">売: 🪙 ${sellPrice.toLocaleString()}</div>
+                    </div>
+                `;
+            } else {
+                listContainer.innerHTML += `
+                    <div class="asset-item" onclick="equipAsset(${item.id})" title="タップで装備">
+                        ${iconHtml}
+                        <div style="font-size: 11px; font-weight: bold; margin-top:4px; color:#2c3e50;">${item.name}</div>
+                        <div style="font-size: 10px; color: #7f8c8d; margin-top:2px;">🪙 ${item.price.toLocaleString()}</div>
+                    </div>
+                `;
+            }
         });
-    }
 
     function equipAsset(assetId) {
         const assetIndex = ownedAssets.findIndex(a => a.id === assetId);
@@ -1261,6 +1297,11 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 
     function goToAssetsScreen() {
+        isSellMode = false;
+        selectedForSale = [];
+        document.getElementById('btn-toggle-sell').style.display = 'block';
+        document.getElementById('sell-controls').style.display = 'none';
+        
         renderAssetsScreen(); 
         showScreen('screen-assets');
     }
@@ -1906,7 +1947,71 @@ async function openRanking() {
         list.innerHTML = '<div style="color:#e74c3c; text-align:center; margin-top:20px;">ランキングの取得に失敗しました。<br>データベースのインデックス設定が必要な場合があります。</div>';
     }
 }
-function closeRanking() {
+
+    // === 売却機能の追加ロジック ===
+    
+    // 売却モードのON/OFFを切り替える
+    function toggleSellMode() {
+        if (ownedAssets.length === 0 && !isSellMode) {
+            alert("売れる資産がありません！");
+            return;
+        }
+
+        isSellMode = !isSellMode;
+        selectedForSale = []; // モード切り替え時に選択をリセット
+        
+        if (isSellMode) {
+            document.getElementById('btn-toggle-sell').style.display = 'none';
+            document.getElementById('sell-controls').style.display = 'block';
+        } else {
+            document.getElementById('btn-toggle-sell').style.display = 'block';
+            document.getElementById('sell-controls').style.display = 'none';
+        }
+        
+        renderAssetsScreen(); // 画面を再描画
+    }
+
+    // アイテムの選択/解除を切り替える
+    function toggleSellSelection(index) {
+        const pos = selectedForSale.indexOf(index);
+        if (pos > -1) {
+            selectedForSale.splice(pos, 1); // 既に選ばれていたら解除
+        } else {
+            selectedForSale.push(index); // 選ばれていなければ追加
+        }
+        renderAssetsScreen(); // 画面更新
+    }
+
+    // 確定して売却する処理
+    function executeSell() {
+        if (selectedForSale.length === 0) {
+            alert("売却するアイテムが選択されていません。");
+            return;
+        }
+        
+        let totalSellPrice = 0;
+        
+        // 配列の後ろから削除しないとインデックスがずれるため、降順にソート
+        selectedForSale.sort((a, b) => b - a);
+        
+        selectedForSale.forEach(index => {
+            const item = ownedAssets[index];
+            // 売却額を設定（全額返還にしたい場合は Math.floor と / 2 を消して単に item.price にしてください）
+            const sellPrice = Math.floor(item.price / 2); 
+            totalSellPrice += sellPrice;
+            ownedAssets.splice(index, 1); // カバンから削除
+        });
+        
+        coins += totalSellPrice; // コインを追加
+        updateCoinUI();
+        saveGameState();
+        
+        alert(`${selectedForSale.length}個のアイテムを売却し、🪙 ${totalSellPrice.toLocaleString()} コインを獲得しました！`);
+        
+        toggleSellMode(); // 売却が完了したら通常モードに戻す
+    }
+    
+    function closeRanking() {
     document.getElementById('ranking-overlay').style.display = 'none';
 }
 
