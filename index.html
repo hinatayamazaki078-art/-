@@ -1250,33 +1250,60 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 
     function renderShopScreen() {
-        const container = document.getElementById('shop-items');
-        container.innerHTML = '';
-        
-        shopCurrentItems.forEach(item => {
-            // ▼ 新規追加：画像（.png）か絵文字かで表示を分岐する処理 ▼
-            let iconHtml = '';
-            if (item.icon.includes('.png')) {
-                // 画像の場合は img タグを使い、枠内に綺麗に収まるように高さを指定する
-                iconHtml = `<img src="${item.icon}" style="width: 100%; height: 40px; object-fit: contain;">`;
-            } else {
-                // 絵文字の場合は元の仕様通り大きな文字サイズで表示する
-                iconHtml = `<div style="font-size: 32px;">${item.icon}</div>`;
-            }
+    const container = document.getElementById('shop-items');
+    container.innerHTML = '';
+    
+    shopCurrentItems.forEach(item => {
+        let iconHtml = '';
+        if (item.icon.includes('.png')) {
+            iconHtml = `<img src="${item.icon}" style="width: 100%; height: 40px; object-fit: contain;">`;
+        } else {
+            iconHtml = `<div style="font-size: 32px;">${item.icon}</div>`;
+        }
 
-            container.innerHTML += `
-                <div class="shop-item">
-                    ${iconHtml}
-                    <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">${item.name}</div>
-                    <div style="color: #f1c40f; font-weight: bold; font-size: 13px; background: #1a1a1a; padding: 2px 8px; border-radius: 12px; width: fit-content; margin: 0 auto;">
-                        🪙 ${item.price.toLocaleString()}
-                    </div>
-                    <button style="margin-bottom: 0; padding: 6px; font-size: 12px; background-color: #bdc3c7; color: #7f8c8d;" disabled>未実装</button>
+        container.innerHTML += `
+            <div class="shop-item">
+                ${iconHtml}
+                <div style="font-weight: bold; color: #2c3e50; font-size: 13px;">${item.name}</div>
+                <div style="color: #f1c40f; font-weight: bold; font-size: 13px; background: #1a1a1a; padding: 2px 8px; border-radius: 12px; width: fit-content; margin: 0 auto;">
+                    🪙 ${item.price.toLocaleString()}
                 </div>
-            `;
-        });
-    }
+                <!-- ▼ 変更箇所：disabledを外し、クリック時の購入処理を追加 ▼ -->
+                <button style="margin-bottom: 0; padding: 6px; font-size: 12px; background: linear-gradient(145deg, #2ecc71, #27ae60); color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="buyShopItem(${item.id})">購入する</button>
+            </div>
+        `;
+    });
+}
 
+    // ネットショッピングで購入ボタンを押した時の処理
+function buyShopItem(itemId) {
+    // ショップに並んでいる商品リストから、選択した商品を探す
+    const item = shopCurrentItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    // コインが足りているかチェック
+    if (coins >= item.price) {
+        // コインを減らす
+        coins -= item.price;
+        
+        // 自分の所持資産に追加する
+        ownedAssets.push({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            icon: item.icon
+        });
+        
+        // 画面のコイン表示とセーブデータを更新
+        updateCoinUI();
+        saveGameState();
+        
+        alert(`「${item.name}」を購入しました！\nホーム画面の「資産装備画面」から確認できます。`);
+    } else {
+        alert("コインが足りません！");
+    }
+}
+    
     function goToShopScreen() {
         renderShopScreen(); 
         showScreen('screen-shop');
