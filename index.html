@@ -565,35 +565,39 @@
         <button id="btn-lobby-back" style="background-color: #7f8c8d;" onclick="goToBetSelectScreen()">⬅️ 掛金選択に戻る</button>
     </div>
 
-<div id="screen-roulette" class="screen" style="background-color: #1c2833; color: white;">
-    <h2 style="text-align: center; color: #f1c40f; margin-top: 10px; font-family: 'Cinzel', serif; letter-spacing: 2px;">CASINO ROULETTE</h2>
+<div id="screen-roulette" class="screen" style="background-color: #1c2833; color: white; display: flex; flex-direction: column; height: 100dvh; box-sizing: border-box; padding: 10px; overflow-y: auto;">
+    <h2 style="text-align: center; color: #f1c40f; margin: 2px 0 5px 0; font-family: 'Cinzel', serif; letter-spacing: 2px; font-size: 18px;">CASINO ROULETTE</h2>
     
-    <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; position: relative; margin-top: 5px;">
-        <div style="font-size: 20px; color: #f1c40f; line-height: 1; z-index: 10; margin-bottom: -8px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7));">▼</div>
-        <canvas id="roulette-canvas" width="230" height="230" style="background: transparent; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));"></canvas>
+    <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
+        <div style="font-size: 16px; color: #f1c40f; line-height: 1; z-index: 10; margin-bottom: -5px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7));">▼</div>
+        <canvas id="roulette-canvas" width="160" height="160" style="background: transparent; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));"></canvas>
         
-        <div id="roulette-status" style="font-size: 14px; font-weight: bold; color: #f39c12; min-height: 40px; text-align: center; line-height: 1.5; margin-top: 5px;">
-            掛け先と掛け金を選んで<br>スピンを開始してください
+        <div id="roulette-status" style="font-size: 12px; font-weight: bold; color: #f39c12; min-height: 34px; text-align: center; line-height: 1.4; margin-top: 4px;">
+            チップを選んで、台の好きな場所に賭けてください
         </div>
     </div>
 
-    <div style="background: rgba(0,0,0,0.6); padding: 12px; border-radius: 8px; border: 1px solid #34495e; margin-bottom: 12px;">
-        <div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #bdc3c7; text-align: center;">1. 賭け先を選択</div>
-        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-            <button id="btn-bet-red" style="flex: 1; background: #e74c3c; margin: 0; padding: 10px; font-size: 13px; border: 2px solid transparent; border-radius: 4px;" onclick="selectRouletteTarget('🔴')">赤 (2倍)</button>
-            <button id="btn-bet-black" style="flex: 1; background: #2c3e50; margin: 0; padding: 10px; font-size: 13px; border: 2px solid transparent; border-radius: 4px;" onclick="selectRouletteTarget('⚫')">黒 (2倍)</button>
-            <button id="btn-bet-green" style="flex: 1; background: #2ecc71; margin: 0; padding: 10px; font-size: 13px; border: 2px solid transparent; border-radius: 4px;" onclick="selectRouletteTarget('🟢')">緑[0] (15倍)</button>
-        </div>
-
-        <div style="font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #bdc3c7; text-align: center;">2. 掛け金を入力</div>
-        <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
-            <input type="number" id="roulette-bet-input" value="10" min="1" style="width: 60%; font-size: 18px; text-align: center; padding: 6px; border-radius: 6px; border: 2px solid #bdc3c7; color: #111;" oninput="validateRouletteBet()">
-            <button style="margin: 0; padding: 8px 12px; font-size: 12px; background: #7f8c8d; border-radius: 4px;" onclick="setRouletteMaxBet()">MAX</button>
-        </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 2px 0;">
+        <div id="betting-board" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; background: #0c131a; padding: 4px; border-radius: 6px; border: 2px solid #d4af37; width: 100%; max-width: 280px; box-sizing: border-box; user-select: none;">
+            </div>
     </div>
 
-    <button id="btn-spin-roulette" class="gacha-btn" style="width: 100%; font-size: 18px; padding: 12px; font-weight: bold; margin-bottom: 10px;" onclick="spinRoulette()" disabled>スピンを開始</button>
-    <button style="background-color: #7f8c8d; width: 100%; padding: 10px; font-size: 14px; margin-bottom: 0; border-radius: 4px;" onclick="showScreen('screen-home')">🏠 ホームに戻る</button>
+    <div style="background: rgba(0,0,0,0.4); padding: 8px; border-radius: 6px; border: 1px solid #34495e; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: center; align-items: center; gap: 6px;">
+            <span style="font-size: 11px; color: #bdc3c7; font-weight: bold;">CHIP:</span>
+            <button id="chip-10" onclick="selectChip(10)" style="width: 34px; height: 34px; border-radius: 50%; background: #3498db; border: 2px solid #fff; font-size: 11px; font-weight: bold; color: white; padding: 0; margin: 0; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">10</button>
+            <button id="chip-50" onclick="selectChip(50)" style="width: 34px; height: 34px; border-radius: 50%; background: #e67e22; border: 2px solid transparent; font-size: 11px; font-weight: bold; color: white; padding: 0; margin: 0; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">50</button>
+            <button id="chip-100" onclick="selectChip(100)" style="width: 34px; height: 34px; border-radius: 50%; background: #9b59b6; border: 2px solid transparent; font-size: 11px; font-weight: bold; color: white; padding: 0; margin: 0; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">100</button>
+            <button id="chip-500" onclick="selectChip(500)" style="width: 34px; height: 34px; border-radius: 50%; background: #e74c3c; border: 2px solid transparent; font-size: 11px; font-weight: bold; color: white; padding: 0; margin: 0; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">500</button>
+            
+            <button onclick="clearAllBets()" style="background: #7f8c8d; font-size: 11px; padding: 8px 10px; border-radius: 4px; margin: 0; margin-left: auto; font-weight: bold;">全て戻す</button>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button id="btn-spin-roulette" class="gacha-btn" style="flex: 2; font-size: 16px; padding: 10px; font-weight: bold; margin: 0;" onclick="spinRoulette()" disabled>スピン開始 (賭け金: 0)</button>
+            <button style="flex: 1; background-color: #566573; padding: 10px; font-size: 12px; margin: 0; border-radius: 4px; font-weight: bold;" onclick="showScreen('screen-home')">🏠 閉じる</button>
+        </div>
+    </div>
 </div>
     
     <div id="screen-build" class="screen">
@@ -2515,9 +2519,8 @@ async function acceptBattleInvite() {
 }
 
 // =========================================
-// 新規追加・上書き: Canvas本格ルーレット盤ロジック
+// 新規上書き: マルチチップベット対応ルーレットシステム
 // =========================================
-// ヨーロピアンルーレットの公式配列（時計回りの物理的な並び順）
 const ROULETTE_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 
 const ROULETTE_COLORS = {
@@ -2536,177 +2539,192 @@ const ROULETTE_COLORS = {
     34: { color: '🔴', name: '赤', bg: '#e74c3c' }, 35: { color: '⚫', name: '黒', bg: '#2c3e50' }, 36: { color: '🔴', name: '赤', bg: '#e74c3c' }
 };
 
-let rouletteAngle = 0; // 現在の回転角度（ラジアン）
-let rouletteSelectedTarget = null;
+// 状態管理変数
+let rouletteAngle = 0;
 let isRouletteSpinning = false;
 let rouletteAnimationId = null;
 
-// ★Canvasを使ってルーレットの円盤を美しく描画する関数★
-function drawRouletteWheel(angle) {
-    const canvas = document.getElementById('roulette-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const radius = canvas.width / 2 - 5;
-    
-    // キャンバスをクリア
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 1. 外側のゴールドの枠線
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = '#d4af37'; // 渋いゴールド
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#9a7b1c';
-    ctx.stroke();
+let currentChipValue = 10;   // 現在選択中のチップの額
+let rouletteBets = {};       // 各マスの賭け金データ 例: { "32": 50, "RED": 100 }
+let totalRouletteBet = 0;    // 今回の総賭け金
 
-    const numSlices = 37;
-    const sliceAngle = (2 * Math.PI) / numSlices;
-
-    // 2. 37マスの色分けと数字を放射状に描画
-    for (let i = 0; i < numSlices; i++) {
-        const num = ROULETTE_ORDER[i];
-        const data = ROULETTE_COLORS[num];
-        
-        const startAngle = i * sliceAngle + angle;
-        const endAngle = (i + 1) * sliceAngle + angle;
-        
-        // 扇型を描画
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius - 6, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fillStyle = data.bg;
-        ctx.fill();
-        
-        // マス同士の微細な境界線
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        ctx.stroke();
-        
-        // 各マスの中心線に合わせて文字を回転させて描画
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(startAngle + sliceAngle / 2);
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 10px "Cinzel", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // 数字を円盤の外側寄りに配置
-        ctx.fillText(num, radius - 18, 0);
-        ctx.restore();
+// ★カジノのベッティングボード（賭け台）を自動作成する関数★
+function initBettingBoard() {
+    const board = document.getElementById('betting-board');
+    if (!board) return;
+    
+    let html = '';
+    
+    // ①「0」のマス（最上部に横いっぱいに広がる6列結合）
+    html += `
+        <div onclick="placeRouletteBet('0')" style="grid-column: span 6; background: #2ecc71; text-align: center; padding: 6px 0; font-weight: bold; border-radius: 4px 4px 0 0; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); font-size: 13px;">
+            0
+            <div id="chip-ind-0" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #f1c40f; color: #111; border-radius: 50%; min-width: 20px; height: 20px; padding: 0 2px; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: bold; border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">0</div>
+        </div>
+    `;
+    
+    // ②「1〜36」のマス（2列ずつ使って、1行に3つ綺麗に並ぶ）
+    for (let i = 1; i <= 36; i++) {
+        const data = ROULETTE_COLORS[i];
+        html += `
+            <div onclick="placeRouletteBet('${i}')" style="grid-column: span 2; background: ${data.bg}; text-align: center; padding: 8px 0; font-weight: bold; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.12); font-size: 13px;">
+                ${i}
+                <div id="chip-ind-${i}" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #f1c40f; color: #111; border-radius: 50%; min-width: 20px; height: 20px; padding: 0 2px; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: bold; border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">0</div>
+            </div>
+        `;
     }
     
-    // 3. 内側のセンターホイール（カジノ特有の金属的なセンターコーンの演出）
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius * 0.45, 0, 2 * Math.PI);
-    ctx.fillStyle = '#1c2833';
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#d4af37';
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius * 0.18, 0, 2 * Math.PI);
-    ctx.fillStyle = '#d4af37';
-    ctx.fill();
+    // ③「赤 (RED) / 黒 (BLACK)」の大きなマス（最下部に3列ずつ半分こ）
+    html += `
+        <div onclick="placeRouletteBet('RED')" style="grid-column: span 3; background: #e74c3c; text-align: center; padding: 10px 0; font-weight: bold; border-radius: 0 0 0 4px; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); font-size: 11px; letter-spacing: 1px;">
+            赤 (RED)
+            <div id="chip-ind-RED" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #f1c40f; color: #111; border-radius: 50%; min-width: 20px; height: 20px; padding: 0 2px; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: bold; border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">0</div>
+        </div>
+        <div onclick="placeRouletteBet('BLACK')" style="grid-column: span 3; background: #2c3e50; text-align: center; padding: 10px 0; font-weight: bold; border-radius: 0 0 4px 0; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); font-size: 11px; letter-spacing: 1px;">
+            黒 (BLACK)
+            <div id="chip-ind-BLACK" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #f1c40f; color: #111; border-radius: 50%; min-width: 20px; height: 20px; padding: 0 2px; font-size: 9px; display: none; align-items: center; justify-content: center; font-weight: bold; border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">0</div>
+        </div>
+    `;
+    
+    board.innerHTML = html;
 }
 
-// ルーレット画面に移動した時の初期化
+// 画面をひらいた時の初期化
 function goToRoulette() {
     if (isRouletteSpinning) return;
     if (rouletteAnimationId) cancelAnimationFrame(rouletteAnimationId);
     
-    rouletteSelectedTarget = null;
+    // ベットリセット
+    rouletteBets = {};
+    totalRouletteBet = 0;
     rouletteAngle = 0;
     
-    document.getElementById('btn-bet-red').style.borderColor = 'transparent';
-    document.getElementById('btn-bet-black').style.borderColor = 'transparent';
-    document.getElementById('btn-bet-green').style.borderColor = 'transparent';
+    document.getElementById('roulette-status').innerHTML = "チップを選んで、台の好きな場所に賭けてください";
     
-    document.getElementById('roulette-status').innerHTML = "掛け先と掛け金を選んで<br>スピンを開始してください";
-    document.getElementById('btn-spin-roulette').disabled = true;
-    
-    const betInput = document.getElementById('roulette-bet-input');
-    if (parseInt(betInput.value) > coins) betInput.value = coins;
-    if (coins <= 0) betInput.value = 0;
-
     showScreen('screen-roulette');
     
-    // 画面切り替え直後に最初の静止盤面を描画
+    // 賭け台の作成とチップの初期化
+    initBettingBoard();
+    selectChip(10);
+    updateChipIndicators();
+    validateRouletteBet();
+    
+    // 最初の静止盤面を描画
     setTimeout(() => { drawRouletteWheel(0); }, 50);
 }
 
-function selectRouletteTarget(target) {
+// チップ（金額）を切り替える
+function selectChip(val) {
     if (isRouletteSpinning) return;
-    rouletteSelectedTarget = target;
-    document.getElementById('btn-bet-red').style.borderColor = (target === '🔴') ? '#f1c40f' : 'transparent';
-    document.getElementById('btn-bet-black').style.borderColor = (target === '⚫') ? '#f1c40f' : 'transparent';
-    document.getElementById('btn-bet-green').style.borderColor = (target === '🟢') ? '#f1c40f' : 'transparent';
-    validateRouletteBet();
+    currentChipValue = val;
+    
+    // 選んだチップを大きく、枠を白くする演出
+    const chips = [10, 50, 100, 500];
+    chips.forEach(v => {
+        const btn = document.getElementById(`chip-${v}`);
+        if (btn) {
+            btn.style.border = (v === val) ? '2px solid #fff' : '2px solid transparent';
+            btn.style.transform = (v === val) ? 'scale(1.15)' : 'scale(1)';
+        }
+    });
 }
 
-function validateRouletteBet() {
-    if (isRouletteSpinning) return;
-    const betInput = document.getElementById('roulette-bet-input');
-    let betAmount = parseInt(betInput.value) || 0;
-    const spinBtn = document.getElementById('btn-spin-roulette');
-
-    if (betAmount > coins) {
-        betInput.value = coins;
-        betAmount = coins;
-    }
-
-    if (rouletteSelectedTarget && betAmount > 0 && betAmount <= coins) {
-        spinBtn.disabled = false;
-    } else {
-        spinBtn.disabled = true;
-    }
-}
-
-function setRouletteMaxBet() {
-    if (isRouletteSpinning) return;
-    document.getElementById('roulette-bet-input').value = coins;
-    validateRouletteBet();
-}
-
-// ★物理減速アニメーション付きのスピン処理★
-function spinRoulette() {
+// ★台をタップしてチップを置く（加算する）コア処理★
+function placeRouletteBet(target) {
     if (isRouletteSpinning) return;
     
-    const betInput = document.getElementById('roulette-bet-input');
-    const betAmount = parseInt(betInput.value) || 0;
-
-    if (betAmount <= 0 || betAmount > coins) return;
-    if (!rouletteSelectedTarget) return;
-
-    coins -= betAmount;
+    // 所持金が足りるかチェック
+    if (coins < currentChipValue) {
+        alert("コインが足りません！");
+        return;
+    }
+    
+    // ベット加算（置いた瞬間に手元からコインが引かれるリアルな仕様）
+    if (!rouletteBets[target]) rouletteBets[target] = 0;
+    rouletteBets[target] += currentChipValue;
+    coins -= currentChipValue;
+    totalRouletteBet += currentChipValue;
+    
+    // UIをリアルタイム更新
     updateCoinUI();
+    updateChipIndicators();
+    validateRouletteBet();
+    
+    // ベット時の小気味良いSE（あれば再生）
+    const betSound = document.getElementById('sound-bet'); // もし将来追加するなら
+    if (betSound) betSound.play().catch(e => {});
+}
+
+// 全ての賭け金を手元に戻す（キャンセル）
+function clearAllBets() {
+    if (isRouletteSpinning) return;
+    if (totalRouletteBet <= 0) return;
+    
+    coins += totalRouletteBet;
+    rouletteBets = {};
+    totalRouletteBet = 0;
+    
+    updateCoinUI();
+    updateChipIndicators();
+    validateRouletteBet();
+}
+
+// 台の上に置かれているチップの数字を更新・描画
+function updateChipIndicators() {
+    const allTargets = ['0', 'RED', 'BLACK'];
+    for (let i = 1; i <= 36; i++) allTargets.push(String(i));
+    
+    allTargets.forEach(t => {
+        const indicator = document.getElementById(`chip-ind-${t}`);
+        if (!indicator) return;
+        
+        const amt = rouletteBets[t] || 0;
+        if (amt > 0) {
+            indicator.innerText = amt;
+            indicator.style.display = 'flex';
+        } else {
+            indicator.style.display = 'none';
+        }
+    });
+}
+
+// ボタンの状態確認
+function validateRouletteBet() {
+    const spinBtn = document.getElementById('btn-spin-roulette');
+    if (!spinBtn) return;
+    
+    if (totalRouletteBet > 0 && !isRouletteSpinning) {
+        spinBtn.disabled = false;
+        spinBtn.innerText = `スピン開始 (賭け金: ${totalRouletteBet})`;
+    } else {
+        spinBtn.disabled = true;
+        spinBtn.innerText = isRouletteSpinning ? "スピン中..." : "スピン開始 (賭け金: 0)";
+    }
+}
+
+// メインスピン（回転開始）
+function spinRoulette() {
+    if (isRouletteSpinning) return;
+    if (totalRouletteBet <= 0) return;
+
     saveGameState();
 
     isRouletteSpinning = true;
     document.getElementById('btn-spin-roulette').disabled = true;
     document.getElementById('roulette-status').innerText = "ルーレットが激しく回転中...";
 
-    // 1. 37マスの中からガチの確率（1/37）で当選番号を完全ランダム決定！
+    // 1/37の確率でガチの当選番号を決定
     const winningNumber = ROULETTE_ORDER[Math.floor(Math.random() * ROULETTE_ORDER.length)];
     const targetIndex = ROULETTE_ORDER.indexOf(winningNumber);
     const resultData = ROULETTE_COLORS[winningNumber];
 
-    // 2. 12時（真上）の位置にあるゴールドの「▼」の元に、当選番号がピタッと止まるための最終回転角度を逆算
+    // 針の真下に止まる角度の逆算
     const sliceAngle = (2 * Math.PI) / 37;
-    // 真上の基準角度（-Math.PI / 2）から、対象マスの中心位置までのオフセットを引く
     const baseAngle = -Math.PI / 2 - (targetIndex * sliceAngle + sliceAngle / 2);
     
-    // 現在の角度から、最低でも大回転（6周分）させた後にピタッと止まるようにエンド角度を設定
     const startAngle = rouletteAngle % (2 * Math.PI);
-    const endAngle = baseAngle - (2 * Math.PI * 6); // 逆回転（時計回り）
+    const endAngle = baseAngle - (2 * Math.PI * 6); // 6周スピン
 
-    // 3. アニメーション（3秒かけて後半にむけてなめらかに減速停止するCubicイージング）
     const duration = 3000;
     const startTime = performance.now();
 
@@ -2714,49 +2732,146 @@ function spinRoulette() {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
         
-        // なめらかな減速のための数式 (Cubic Out)
-        const ease = 1 - Math.pow(1 - progress, 3);
+        const ease = 1 - Math.pow(1 - progress, 3); // Cubic減速
         rouletteAngle = startAngle + (endAngle - startAngle) * ease;
         
-        // 新しい角度で盤面を再描画
         drawRouletteWheel(rouletteAngle);
         
         if (progress < 1) {
             rouletteAnimationId = requestAnimationFrame(animate);
         } else {
-            // アニメーションが完了したら判定へ
-            finalizeRouletteResult(winningNumber, resultData, betAmount);
+            finalizeRouletteResult(winningNumber, resultData);
         }
     }
     rouletteAnimationId = requestAnimationFrame(animate);
 }
 
-// 最終結果処理
-function finalizeRouletteResult(winningNumber, resultData, betAmount) {
+// ★複数箇所への同時賭けに対応した配当計算★
+function finalizeRouletteResult(winningNumber, resultData) {
     isRouletteSpinning = false;
-    const resultOutcome = resultData.color;
+    const resultColorEmoji = resultData.color;
     const resultColorName = resultData.name;
+    
+    // 赤・黒の文字列判定キー
+    const colorKey = (resultColorEmoji === '🔴') ? 'RED' : ((resultColorEmoji === '⚫') ? 'BLACK' : 'GREEN');
 
-    if (rouletteSelectedTarget === resultOutcome) {
-        // 緑(0)の的中は超大穴（1/37）なので、特別配当15倍に！
-        let payoutMultiplier = (resultOutcome === '🟢') ? 15 : 2;
-        let winnings = betAmount * payoutMultiplier;
-        coins += winnings;
-        
-        document.getElementById('roulette-status').innerHTML = `出目: <span style="font-size:16px;">${resultOutcome} の No.${winningNumber}</span><br><span style="color:#2ecc71; font-size:16px;">🎉 見事に的中！ +${winnings.toLocaleString()} コイン！</span>`;
+    let totalWinnings = 0;
+    let hitReports = [];
+
+    // ① 数字直撃ベットの判定（驚異の36倍配当！）
+    const numStr = String(winningNumber);
+    if (rouletteBets[numStr] && rouletteBets[numStr] > 0) {
+        const win = rouletteBets[numStr] * 36;
+        totalWinnings += win;
+        hitReports.push(`数字 [No.${winningNumber}] 的中(36倍): +${win}`);
+    }
+
+    // ② 赤・黒ベットの判定（手堅い2倍配当）
+    if (colorKey === 'RED' && rouletteBets['RED'] && rouletteBets['RED'] > 0) {
+        const win = rouletteBets['RED'] * 2;
+        totalWinnings += win;
+        hitReports.push(`赤 (RED) 的中(2倍): +${win}`);
+    } else if (colorKey === 'BLACK' && rouletteBets['BLACK'] && rouletteBets['BLACK'] > 0) {
+        const win = rouletteBets['BLACK'] * 2;
+        totalWinnings += win;
+        hitReports.push(`黒 (BLACK) 的中(2倍): +${win}`);
+    }
+
+    // ゲーム結果の反映
+    if (totalWinnings > 0) {
+        coins += totalWinnings;
+        let reportText = hitReports.join('<br>');
+        document.getElementById('roulette-status').innerHTML = `
+            出目: <span style="font-size:15px;">${resultColorEmoji} No.${winningNumber} (${resultColorName})</span><br>
+            <span style="color:#2ecc71; font-size:15px; font-weight:bold;">🎉 的中！ 合計 +${totalWinnings.toLocaleString()} コイン！</span><br>
+            <span style="font-size:11px; color:#bdc3c7;">${reportText}</span>
+        `;
         
         const winSound = document.getElementById('sound-win');
-        if (winSound) winSound.play().catch(e => console.log(e));
+        if (winSound) winSound.play().catch(e => {});
     } else {
-        document.getElementById('roulette-status').innerHTML = `出目: <span style="font-size:16px;">${resultOutcome} の No.${winningNumber}</span><br><span style="color:#e74c3c;">残念！ディーラーに没収されました...</span>`;
+        document.getElementById('roulette-status').innerHTML = `
+            出目: <span style="font-size:15px;">${resultColorEmoji} No.${winningNumber} (${resultColorName})</span><br>
+            <span style="color:#e74c3c; font-size:13px;">残念！今回の賭け金は没収されました...</span>
+        `;
         
         const loseSound = document.getElementById('sound-lose');
-        if (loseSound) loseSound.play().catch(e => console.log(e));
+        if (loseSound) loseSound.play().catch(e => {});
     }
+
+    // 次のゲームのために今回のベット情報をクリア
+    rouletteBets = {};
+    totalRouletteBet = 0;
 
     updateCoinUI();
     saveGameState();
+    updateChipIndicators();
     validateRouletteBet();
+}
+
+// キャンバス描画用（前回の処理を少しリサイズ最適化）
+function drawRouletteWheel(angle) {
+    const canvas = document.getElementById('roulette-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const radius = canvas.width / 2 - 4;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = '#d4af37';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#9a7b1c';
+    ctx.stroke();
+
+    const numSlices = 37;
+    const sliceAngle = (2 * Math.PI) / numSlices;
+
+    for (let i = 0; i < numSlices; i++) {
+        const num = ROULETTE_ORDER[i];
+        const data = ROULETTE_COLORS[num];
+        
+        const startAngle = i * sliceAngle + angle;
+        const endAngle = (i + 1) * sliceAngle + angle;
+        
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius - 4, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = data.bg;
+        ctx.fill();
+        
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.stroke();
+        
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 8px "Cinzel", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num, radius - 14, 0);
+        ctx.restore();
+    }
+    
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.45, 0, 2 * Math.PI);
+    ctx.fillStyle = '#1c2833';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#d4af37';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.16, 0, 2 * Math.PI);
+    ctx.fillStyle = '#d4af37';
+    ctx.fill();
 }
     
     async function declineBattleInvite() {
