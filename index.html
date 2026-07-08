@@ -2515,27 +2515,46 @@ async function acceptBattleInvite() {
 }
 
 // =========================================
-// 新規追加: ルーレットゲーム用ロジック
+// 改良版: 本格的な数字付きルーレットデータ
 // =========================================
+// 0〜36の数字と、それぞれの色（カジノの公式配置）の組み合わせ
+const ROULETTE_NUMBERS = {
+    0: { color: '🟢', name: '緑' },
+    1: { color: '🔴', name: '赤' }, 2: { color: '⚫', name: '黒' }, 3: { color: '🔴', name: '赤' },
+    4: { color: '⚫', name: '黒' }, 5: { color: '🔴', name: '赤' }, 6: { color: '⚫', name: '黒' },
+    7: { color: '🔴', name: '赤' }, 8: { color: '⚫', name: '黒' }, 9: { color: '🔴', name: '赤' },
+    10: { color: '⚫', name: '黒' }, 11: { color: '⚫', name: '黒' }, 12: { color: '🔴', name: '赤' },
+    13: { color: '⚫', name: '黒' }, 14: { color: '🔴', name: '赤' }, 15: { color: '⚫', name: '黒' },
+    16: { color: '🔴', name: '赤' }, 17: { color: '⚫', name: '黒' }, 18: { color: '🔴', name: '赤' },
+    19: { color: '🔴', name: '赤' }, 20: { color: '⚫', name: '黒' }, 21: { color: '🔴', name: '赤' },
+    22: { color: '⚫', name: '黒' }, 23: { color: '🔴', name: '赤' }, 24: { color: '⚫', name: '黒' },
+    25: { color: '🔴', name: '赤' }, 26: { color: '⚫', name: '黒' }, 27: { color: '🔴', name: '赤' },
+    28: { color: '⚫', name: '黒' }, 29: { color: '⚫', name: '黒' }, 30: { color: '🔴', name: '赤' },
+    31: { color: '⚫', name: '黒' }, 32: { color: '🔴', name: '赤' }, 33: { color: '⚫', name: '黒' },
+    34: { color: '🔴', name: '赤' }, 35: { color: '⚫', name: '黒' }, 36: { color: '🔴', name: '赤' }
+};
+
 let rouletteSelectedTarget = null; // '🔴', '⚫', '🟢'
 let isRouletteSpinning = false;
 
-// ルーレット画面を開く処理
+// ルーレット画面を開く処理（表示のリセットを強化）
 function goToRoulette() {
     if (isRouletteSpinning) return;
     rouletteSelectedTarget = null;
     
-    // ボタンの選択枠をクリア
     document.getElementById('btn-bet-red').style.borderColor = 'transparent';
     document.getElementById('btn-bet-black').style.borderColor = 'transparent';
     document.getElementById('btn-bet-green').style.borderColor = 'transparent';
     
     document.getElementById('roulette-status').innerHTML = "掛け先と掛け金を選んで<br>スピンを開始してください";
-    document.getElementById('roulette-wheel').style.transform = 'rotate(0deg)';
-    document.getElementById('roulette-wheel').innerText = '🎰';
+    
+    const wheel = document.getElementById('roulette-wheel');
+    wheel.style.transform = 'rotate(0deg)';
+    wheel.style.fontSize = '48px'; // 文字サイズを戻す
+    wheel.innerText = '🎰';
+    
     document.getElementById('btn-spin-roulette').disabled = true;
     
-    // 現在の所持金に合わせてデフォルトベットを調整
     const betInput = document.getElementById('roulette-bet-input');
     if (parseInt(betInput.value) > coins) {
         betInput.value = coins;
@@ -2545,32 +2564,29 @@ function goToRoulette() {
     showScreen('screen-roulette');
 }
 
-// 賭け先（赤・黒・緑）を選択したときの処理
+// 賭け先を選択したときの処理
 function selectRouletteTarget(target) {
     if (isRouletteSpinning) return;
     rouletteSelectedTarget = target;
     
-    // 選択されたボタンに金色の枠線をつける演出
     document.getElementById('btn-bet-red').style.borderColor = (target === '🔴') ? '#f1c40f' : 'transparent';
     document.getElementById('btn-bet-black').style.borderColor = (target === '⚫') ? '#f1c40f' : 'transparent';
     document.getElementById('btn-bet-green').style.borderColor = (target === '🟢') ? '#f1c40f' : 'transparent';
     validateRouletteBet();
 }
 
-// ベット額や選択状態のバリデーション（チェック）
+// ベット額のチェック
 function validateRouletteBet() {
     if (isRouletteSpinning) return;
     const betInput = document.getElementById('roulette-bet-input');
     let betAmount = parseInt(betInput.value) || 0;
     const spinBtn = document.getElementById('btn-spin-roulette');
 
-    // 所持金以上のベットは強制的に上限へ
     if (betAmount > coins) {
         betInput.value = coins;
         betAmount = coins;
     }
 
-    // 条件が満たされていればスピンボタンを有効化
     if (rouletteSelectedTarget && betAmount > 0 && betAmount <= coins) {
         spinBtn.disabled = false;
     } else {
@@ -2578,14 +2594,13 @@ function validateRouletteBet() {
     }
 }
 
-// 所持金マックスを賭けるショートカット
 function setRouletteMaxBet() {
     if (isRouletteSpinning) return;
     document.getElementById('roulette-bet-input').value = coins;
     validateRouletteBet();
 }
 
-// ルーレットを回すメイン処理
+// ★数字に対応したメインスピン処理★
 function spinRoulette() {
     if (isRouletteSpinning) return;
     
@@ -2601,7 +2616,6 @@ function spinRoulette() {
         return;
     }
 
-    // コインを減らしてセーブ
     coins -= betAmount;
     updateCoinUI();
     saveGameState();
@@ -2610,64 +2624,58 @@ function spinRoulette() {
     document.getElementById('btn-spin-roulette').disabled = true;
     document.getElementById('roulette-status').innerText = "ルーレット回転中...";
 
-    // 確率計算 (0〜44:赤 45%, 45〜89:黒 45%, 90〜99:緑 10%)
-    const rand = Math.floor(Math.random() * 100);
-    let resultOutcome = '';
-    let resultColorName = '';
-    
-    if (rand < 45) {
-        resultOutcome = '🔴';
-        resultColorName = '赤';
-    } else if (rand < 90) {
-        resultOutcome = '⚫';
-        resultColorName = '黒';
-    } else {
-        resultOutcome = '🟢';
-        resultColorName = '緑';
-    }
+    // 【変更点】0〜36の数字をランダムに決定！
+    // (※もし32までにしたい場合は、下の「37」を「33」に書き換えて、上のデータから33〜36を消せばOKです)
+    const winningNumber = Math.floor(Math.random() * 37); 
+    const resultData = ROULETTE_NUMBERS[winningNumber];
+    const resultOutcome = resultData.color; // '🔴', '⚫', '🟢'
+    const resultColorName = resultData.name; // '赤', '黒', '緑'
 
-    // 演出1：CSSによる滑らかな回転アニメーション（5回転＋ランダム角度）
+    // 演出1：回転アニメーション
     const wheel = document.getElementById('roulette-wheel');
     const randomRotation = 1800 + Math.floor(Math.random() * 360);
     wheel.style.transform = `rotate(${randomRotation}deg)`;
 
-    // 演出2：絵文字が高速シャッフルされるデジタル演出
+    // 演出2：回転中に「数字と色」が激しく入れ替わるシャッフル演出
+    wheel.style.fontSize = '20px'; // 数字が入るように文字を小さく
+    wheel.style.flexDirection = 'column';
+    
     let shuffleCount = 0;
-    const symbols = ['🔴', '⚫', '🟢'];
+    const numberKeys = Object.keys(ROULETTE_NUMBERS);
     const shuffleInterval = setInterval(() => {
-        wheel.innerText = symbols[shuffleCount % symbols.length];
+        const randomKey = numberKeys[Math.floor(Math.random() * numberKeys.length)];
+        const shuffleData = ROULETTE_NUMBERS[randomKey];
+        wheel.innerHTML = `<span style="font-size:28px; line-height:1;">${shuffleData.color}</span><span>No.${randomKey}</span>`;
         shuffleCount++;
     }, 100);
 
-    // 2.5秒後に結果を停止させて判定
+    // 2.5秒後にピタッと止まる
     setTimeout(() => {
         clearInterval(shuffleInterval);
-        wheel.innerText = resultOutcome;
+        // 結果の数字と色をホイール中央にバシッと表示
+        wheel.innerHTML = `<span style="font-size:32px; line-height:1;">${resultOutcome}</span><span style="font-weight:bold; color:#fff; font-size:16px; margin-top:2px;">No.${winningNumber}</span>`;
         isRouletteSpinning = false;
 
         // 当たり判定
         if (rouletteSelectedTarget === resultOutcome) {
-            let payoutMultiplier = (resultOutcome === '🟢') ? 10 : 2; // 緑は10倍、赤黒は2倍
+            let payoutMultiplier = (resultOutcome === '🟢') ? 10 : 2; // 緑(0)なら10倍！赤黒は2倍
             let winnings = betAmount * payoutMultiplier;
             coins += winnings;
             
-            document.getElementById('roulette-status').innerHTML = `結果: <span style="font-size:18px;">${resultOutcome} (${resultColorName})</span><br><span style="color:#2ecc71; font-size:16px;">🎉 的中！ +${winnings.toLocaleString()} コイン！</span>`;
+            document.getElementById('roulette-status').innerHTML = `出目: <span style="font-size:16px;">${resultOutcome} の ${winningNumber} (${resultColorName})</span><br><span style="color:#2ecc71; font-size:16px;">🎉 的中！ +${winnings.toLocaleString()} コイン！</span>`;
             
-            // 既存の勝利SEがあれば再生
             const winSound = document.getElementById('sound-win');
             if (winSound) winSound.play().catch(e => console.log(e));
         } else {
-            document.getElementById('roulette-status').innerHTML = `結果: <span style="font-size:18px;">${resultOutcome} (${resultColorName})</span><br><span style="color:#e74c3c;">残念！没収されました...</span>`;
+            document.getElementById('roulette-status').innerHTML = `出目: <span style="font-size:16px;">${resultOutcome} の ${winningNumber} (${resultColorName})</span><br><span style="color:#e74c3c;">残念！没収されました...</span>`;
             
-            // 既存の敗北SEがあれば再生
             const loseSound = document.getElementById('sound-lose');
             if (loseSound) loseSound.play().catch(e => console.log(e));
         }
 
-        // コインUIの同期とセーブ
         updateCoinUI();
         saveGameState();
-        validateRouletteBet(); // 次のターンのためにボタンをリセット
+        validateRouletteBet();
     }, 2500);
 }
     
