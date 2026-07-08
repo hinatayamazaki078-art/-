@@ -843,32 +843,32 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     // 【追加修正】エントリーキャンセル＆払い戻し共通関数
     // =========================================
     async function cancelEntry() {
-    // 掛金が設定されている、またはランクマッチ待機中の場合にキャンセルを実行
-    if (isHost && (currentBet > 0 || isRankMatch)) {
-        
-        // 【安全設計】最初から引いていないので、ここではコインを足さない（削除）
-        // coins += currentBet; 
+        // 掛金が設定されている、またはランクマッチ待機中の場合にキャンセルを実行
+        if (isHost && (currentBet > 0 || isRankMatch)) {
+            const roomId = currentRoomId;
+            
+            // 状態をリセット
+            currentBet = 0;
+            isHost = false;
+            isRankMatch = false;
+            isOnlineBattle = false;
+            currentRoomId = null;
+            
+            updateCoinUI(); // 画面表示を元に戻す
+            saveGameState();
 
-        // 状態をリセット
-        currentBet = 0;
-        isHost = false;
-        isRankMatch = false;
-        updateCoinUI(); // 画面表示を元に戻す
-        saveGameState();
-
-        // 待機中の部屋をキャンセルするFirebase処理
-        if (currentRoomId) {
-            try {
-                const roomRef = window.doc(window.db, "rooms", currentRoomId);
-                await window.updateDoc(roomRef, { status: "cancelled" });
-                currentRoomId = null;
-            } catch (error) {
-                console.error("部屋のキャンセルに失敗しました:", error);
+            // 待機中の部屋をキャンセルするFirebase処理
+            if (roomId) {
+                try {
+                    const roomRef = window.doc(window.db, "rooms", roomId);
+                    await window.updateDoc(roomRef, { status: "cancelled" });
+                    console.log("エントリーをキャンセルし、空席にしました。");
+                } catch (error) {
+                    console.error("部屋のキャンセルに失敗しました:", error);
+                }
             }
         }
-        goToHome();
     }
-}
 
     // 【修正】関数をasync化し、キャンセル処理を追加
     async function goToHome() {
@@ -2729,7 +2729,7 @@ async function createRankHostRoom(pName, myRankStr, rankBtn) {
                 nextTurn();
             }, 2500);
         }
-        }
+    } // ← ★この「 } 」を1つだけ追加してください！！！
 
 async function nextTurn() {
     document.getElementById('battle-log').innerHTML = "<span>次のターンを準備中...</span>";
