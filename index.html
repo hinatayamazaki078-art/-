@@ -856,13 +856,14 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         updateCoinUI(); // 画面表示を元に戻す
         saveGameState();
 
-        // 待機中の部屋を削除するFirebase処理
+        // 待機中の部屋をキャンセルするFirebase処理
         if (currentRoomId) {
             try {
-                await deleteDoc(doc(db, "rooms", currentRoomId));
+                const roomRef = window.doc(window.db, "rooms", currentRoomId);
+                await window.updateDoc(roomRef, { status: "cancelled" });
                 currentRoomId = null;
             } catch (error) {
-                console.error("部屋の削除に失敗しました:", error);
+                console.error("部屋のキャンセルに失敗しました:", error);
             }
         }
         goToHome();
@@ -2727,6 +2728,7 @@ async function createRankHostRoom(pName, myRankStr, rankBtn) {
             setTimeout(() => {
                 nextTurn();
             }, 2500);
+        }
         }
 
 async function nextTurn() {
