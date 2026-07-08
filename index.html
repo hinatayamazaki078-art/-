@@ -2723,9 +2723,9 @@ function spinRoulette() {
     const baseAngle = -Math.PI / 2 - (targetIndex * sliceAngle + sliceAngle / 2);
     
     const startAngle = rouletteAngle % (2 * Math.PI);
-    const endAngle = baseAngle - (2 * Math.PI * 6); // 6周スピン
+    const endAngle = baseAngle - (2 * Math.PI * 20); // ★周回数を「20周」に増やす
 
-    const duration = 3000;
+    const duration = 10000; // ★回転時間を「10秒（10000ミリ秒）」にする
     const startTime = performance.now();
 
     function animate(now) {
