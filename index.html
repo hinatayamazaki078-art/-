@@ -819,8 +819,20 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 
     function updateCoinUI() {
-        document.getElementById('player-coins').innerText = coins.toLocaleString();
+    // 基本は現在の所持コイン
+    let displayedCoins = coins;
+    
+    // 【ホールド処理】自分がホストとして部屋を作り、待機中の場合だけ、画面上の表示を減らす
+    if (isHost && currentBet > 0 && currentRoomId && !isRankMatch) {
+        displayedCoins = coins - currentBet;
     }
+
+    // あなたのHTMLにあるID「player-coins」を書き換える
+    const coinEl = document.getElementById('player-coins'); 
+    if (coinEl) {
+        coinEl.innerText = displayedCoins.toLocaleString();
+    }
+}
 
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -831,36 +843,31 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     // 【追加修正】エントリーキャンセル＆払い戻し共通関数
     // =========================================
     async function cancelEntry() {
-    // 掛金が設定されている（通常ロビー）、または ランクマッチ待機中の場合にキャンセルを実行
+    // 掛金が設定されている、またはランクマッチ待機中の場合にキャンセルを実行
     if (isHost && (currentBet > 0 || isRankMatch)) {
         
-        // --- ここから下の3行を削除またはコメントアウト ---
-        // coins += currentBet; // コインを返還
-        // updateCoinUI();
-        // saveGameState(); // ローカルストレージを同期
-        // --- ここまで ---
+        // 【安全設計】最初から引いていないので、ここではコインを足さない（削除）
+        // coins += currentBet; 
 
-        const roomId = currentRoomId;
-            // ローカル変数の各種フラグを即座にリセット
-            isHost = false;
-            isOnlineBattle = false;
+        // 状態をリセット
+        currentBet = 0;
+        isHost = false;
         isRankMatch = false;
-            currentBet = 0;
-            currentRoomId = null;
+        updateCoinUI(); // 画面表示を元に戻す
+        saveGameState();
 
-            if (roomId) {
-                try {
-                    const roomRef = window.doc(window.db, "rooms", roomId);
-                    await window.updateDoc(roomRef, {
-                        status: "cancelled"
-                    });
-                    console.log("エントリーをキャンセルし、Firebase上の部屋を無効化しました。");
-                } catch (e) {
-                    console.error("Firebase上の部屋のキャンセルに失敗:", e);
-                }
+        // 待機中の部屋を削除するFirebase処理
+        if (currentRoomId) {
+            try {
+                await deleteDoc(doc(db, "rooms", currentRoomId));
+                currentRoomId = null;
+            } catch (error) {
+                console.error("部屋の削除に失敗しました:", error);
             }
         }
+        goToHome();
     }
+}
 
     // 【修正】関数をasync化し、キャンセル処理を追加
     async function goToHome() {
@@ -1020,16 +1027,10 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
 
     if (mode === 'entry') {
-        // エントリー：Firebaseに部屋データを送信して作成する
-        
-        // --- ここから下の3行を削除またはコメントアウト ---
-        // coins -= currentBet; 
-        // updateCoinUI();
-        // saveGameState();
-        // --- ここまで ---
-        
+        // 【安全設計】ここでは実際のコインは引かず、設定だけを行います
         isOnlineBattle = true;
         isHost = true;
+        isRankMatch = false;
 
         const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
         
@@ -1052,6 +1053,9 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
 
             currentRoomId = docRef.id; // 作成された部屋のIDを保持
             console.log("部屋を作成しました。ID: ", currentRoomId);
+
+            // 部屋が無事に作られたら、画面のコイン表示を「減った状態」に更新する
+            updateCoinUI();
 
             showScreen('screen-lobby');
             document.getElementById('btn-lobby-back').style.display = 'block';
@@ -1175,31 +1179,26 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
     }
     if (confirm(`🪙 ${betAmount.toLocaleString()} コインを賭けてこの席に挑戦しますか？`)) {
         
-        // --- ここから下の3行を削除またはコメントアウト ---
-        // coins -= betAmount;
-        // updateCoinUI();
-        // saveGameState();
-        // --- ここまで ---
-        
+        // 【安全設計】挑戦時も実際のコインは引かず、設定だけを行います
         isHost = false;
-            currentBet = betAmount;
-            currentRoomId = roomId;
+        currentBet = betAmount;
+        currentRoomId = roomId;
 
-            try {
-                const roomRef = window.doc(window.db, "rooms", roomId);
-                await window.updateDoc(roomRef, {
-                    status: "playing",
-                    guestName: document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト',
-                    guestAvatar: currentAvatar
-                });
-                console.log("マッチング成立！");
-                
-                goToBuildScreen(true);
-            } catch (e) {
-                alert("この席は既に埋まっているか、エラーが発生しました。");
-            }
+        try {
+            const roomRef = window.doc(window.db, "rooms", roomId);
+            await window.updateDoc(roomRef, {
+                status: "playing",
+                guestName: document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト',
+                guestAvatar: currentAvatar
+            });
+            console.log("マッチング成立！");
+            
+            goToBuildScreen(true);
+        } catch (e) {
+            alert("この席は既に埋まっているか、エラーが発生しました。");
         }
     }
+}
 
     function renderAvatarHtml(avatar) {
     if (!avatar) return '🤖';
@@ -1724,31 +1723,40 @@ function buyShopItem(itemId) {
 
     // 2. 相手が切断したとき（残された側：勝利判定）の処理
     function handleOpponentDisconnect() {
-        isOnlineBattle = false; // ループ・2重処理防止
-        const logEl = document.getElementById('battle-log');
-        const returnBtn = document.getElementById('btn-return-home');
-        
-        logEl.innerHTML = `<div style="color:#e74c3c; font-size:15px; font-weight:bold;">⚠️ 相手プレイヤーの切断を検知しました。</div>`;
-        
-        if (currentBet > 0) {
-            // 既存の「事前に引かない」仕様に合わせ、不戦勝として掛け金分をプラス
-            coins += currentBet; 
-            const payout = currentBet * 2;
-            logEl.innerHTML += `<div class="win-text">🎉 あなたの不戦勝です！ [ ${payout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
-        } else {
-            logEl.innerHTML += `<div class="win-text">🎉 あなたの不戦勝です！ 🎉</div>`;
-        }
-        addExp(5);
-        
-        updateCoinUI();
-        saveGameState();
+    logEl.innerHTML += `<div style="color:#e74c3c; font-size:16px; margin-top:4px;">⚠️ 対戦相手との接続が切断されました。</div>`;
+    
+    if (isOnlineBattle) {
         returnBtn.style.display = 'block';
         
-        // 4秒後に自動でホームに戻す
+        const winSound = document.getElementById('sound-win');
+        if (winSound) winSound.play().catch(e => console.log(e));
+
+        if (currentBet > 0) {
+            // 【後払い仕様】相手の賭け金（1倍）を足すことで、手元が2倍になります
+            coins += currentBet; 
+            const totalPayout = currentBet * 2;
+            logEl.innerHTML += `<div class="win-text">🎉 あなたの不戦勝です！ [ ${totalPayout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+        } else {
+            if (isRankMatch) {
+                coins += 50; // ランクマッチの不戦勝報酬
+                if (typeof updateRank === 'function') updateRank(true);
+                logEl.innerHTML += `<div class="win-text">🎉 あなたの不戦勝です！ 50コイン獲得！ 🎉</div>`;
+            } else {
+                logEl.innerHTML += `<div class="win-text">🎉 あなたの不戦勝です！ 🎉</div>`;
+            }
+        }
+
+        isOnlineBattle = false;
+        isRankMatch = false;
+        if (unsubscribeBattleStatus) { unsubscribeBattleStatus(); unsubscribeBattleStatus = null; }
+        updateCoinUI();
+        saveGameState();
+
         setTimeout(() => {
             goToHome();
-        }, 4000);
+        }, 3000);
     }
+}
 
     // 3. 自分が切断したとき（閉じた側：負け・没収判定）の処理
     function handleSelfDisconnect() {
@@ -2645,86 +2653,81 @@ async function createRankHostRoom(pName, myRankStr, rankBtn) {
         }
 
         if (isEnded) {
-            // 🌟 ランクマッチの場合はセット終了処理へ引き渡す
             if (isRankMatch) {
-                let setWinner = "draw";
-                if (isPlayerWin && !isDraw) setWinner = "player";
-                if (!isPlayerWin && !isDraw) setWinner = "cpu";
-                
-                handleSetEnd(setWinner);
-                return; // ここで処理を抜けることで、通常の終了処理（戻るボタン表示など）を防ぐ
+                if (!isDraw) {
+                    updateRank(isPlayerWin); // ランク更新
+                }
             }
 
-            // ↓ 通常マッチ（練習・オンライン掛金戦）の終了処理（今までのまま）
             returnBtn.style.display = 'block';
-
-            if (isRankMatch && !isDraw) { // ※ここは通常マッチなら通らないので実質無視されます
-                updateRank(isPlayerWin); 
-            }
         
-        if (isDraw) {
-            if (isOnlineBattle) {
-                // --- 修正: 引き分けの払い戻しを削除 ---
-                // coins += currentBet; ←この1行を削除してください
-                
+            if (isDraw) {
+                // 【後払い】引き分け時は最初から引かれていないのでコインの増減なし
                 if (currentBet === 0) {
                     logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！ (フレンド対戦) 🤝</div>`;
                 } else {
-                    logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！コインの変動はありません 🤝</div>`;
+                    logEl.innerHTML += `<div style="color:#7f8c8d; font-size:16px; margin-top:4px;">🤝 引き分け！コインがそのまま返還されました 🤝</div>`;
                 }
-            } else {
-                logEl.innerHTML += `<div style="color:#7f8c8d; font-size:18px; margin-top:4px;">🤝 ドローゲーム！ 🤝</div>`;
-            }
-        } else if (isPlayerWin) {
-            document.getElementById('sound-win').play().catch(e => console.log("音声再生エラー:", e));
-            if (isOnlineBattle) {
-                // 事前に減っていないので、純利益(掛金分)を足す
-                coins += currentBet; 
-                
-                if (currentBet === 0) {
-                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! フレンドに勝利しました！ 🎉</div>`;
+            } else if (isPlayerWin) {
+                // 勝利時のSE再生
+                const winSound = document.getElementById('sound-win');
+                if (winSound) winSound.play().catch(e => console.log("音声再生エラー:", e));
+
+                if (isOnlineBattle) {
+                    if (isRankMatch) {
+                        coins += 50; // ランクマッチ勝利報酬
+                        logEl.innerHTML += `<div class="win-text">🎉 RANK WIN! 50コイン獲得！ 🎉</div>`;
+                    } else if (currentBet === 0) {
+                        logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! フレンドに勝利しました！ 🎉</div>`;
+                    } else {
+                        // 【後払い仕様】自分の分は引かれていないので、相手の賭け金（1倍）を足すだけで手元は「2倍」になります
+                        coins += currentBet; 
+                        // 演出表示はド派手に2倍総取りと出す
+                        const totalPayout = currentBet * 2;
+                        logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 総取りで [ ${totalPayout.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+                    }
+                    if (typeof addExp === 'function') addExp(5);
                 } else {
-                    // 表示を「掛金分」に変更し、獲得額の変数も currentBet に修正
-                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 掛金分 [ ${currentBet.toLocaleString()}コイン ] 獲得！ 🎉</div>`;
+                    coins += 10; // CPU戦勝利
+                    logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 10コイン獲得！ 🎉</div>`;
+                    if (typeof addExp === 'function') addExp(1);
                 }
-                addExp(5);
             } else {
-                coins += 10; 
-                logEl.innerHTML += `<div class="win-text">🎉 MATCH WIN! 10コイン獲得！ 🎉</div>`;
-                addExp(1);
-            }
-        } else {
-            document.getElementById('sound-lose').play().catch(e => console.log("音声再生エラー:", e));
-            if (isOnlineBattle) {
-                // --- 修正: 負けた時に初めて掛金を引く処理を追加 ---
-                coins -= currentBet; // ←この1行を追加
-                
-                if (currentBet === 0) {
-                    logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... フレンドに敗北しました 💀</div>`;
+                // 敗北時のSE再生
+                const loseSound = document.getElementById('sound-lose');
+                if (loseSound) loseSound.play().catch(e => console.log("音声再生エラー:", e));
+
+                if (isOnlineBattle) {
+                    if (isRankMatch) {
+                        logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 RANK LOSE... 💀</div>`;
+                    } else if (currentBet === 0) {
+                        logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... フレンドに敗北しました 💀</div>`;
+                    } else {
+                        // 【後払い仕様】負けたのでここで初めて自分の賭け金が没収（マイナス）されます
+                        coins -= currentBet; 
+                        logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... 掛金 ${currentBet.toLocaleString()}コイン 没収 💀</div>`;
+                    }
                 } else {
-                    logEl.innerHTML += `<div style="color:#c0392b; font-size:16px; margin-top:4px;">💀 MATCH LOSE... 掛金 ${currentBet.toLocaleString()}コイン 没収 💀</div>`;
+                    logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 MATCH LOSE... 💀</div>`;
                 }
-            } else {
-                logEl.innerHTML += `<div style="color:#c0392b; font-size:18px; margin-top:4px;">💀 MATCH LOSE... 💀</div>`;
             }
-        }
-        
-        isOnlineBattle = false;
+            
+            // 対戦状態のリセット
+            isOnlineBattle = false;
             isRankMatch = false;
             if (unsubscribeBattleStatus) { unsubscribeBattleStatus(); unsubscribeBattleStatus = null; }
-        updateCoinUI(); 
-        saveGameState(); // ←念のためここにもセーブ処理を追加しておくと安全です
+            updateCoinUI(); 
+            saveGameState(); 
 
-        setTimeout(() => {
-            goToHome();
-        }, 3000);
-        
-    } else {
+            setTimeout(() => {
+                goToHome();
+            }, 3000);
+            
+        } else {
             setTimeout(() => {
                 nextTurn();
             }, 2500);
         }
-    }
 
 async function nextTurn() {
     document.getElementById('battle-log').innerHTML = "<span>次のターンを準備中...</span>";
