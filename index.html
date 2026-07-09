@@ -391,10 +391,13 @@
 <div id="screen-bj-game" class="screen" style="background-color: #0b3d0b; color: white; justify-content: space-between; padding: 10px;">
     
     <!-- ディーラーエリア -->
-    <div style="text-align: center;">
-        <div style="font-size: 40px;">🤖</div>
-        <div style="font-weight: bold; margin-bottom: 5px;">DEALER</div>
-        <div id="bj-dealer-cards" style="display: flex; justify-content: center; gap: 5px; min-height: 60px;"></div>
+    <div style="text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 10px; border: 1px solid #d4af37; max-width: 200px; margin: 0 auto;">
+        <!-- 丸枠の中にディーラー画像を綺麗に収める -->
+        <div style="width: 45px; height: 45px; border-radius: 50%; overflow: hidden; background: #111; margin: 0 auto; display: flex; justify-content: center; align-items: center; border: 1px solid #d4af37;">
+            <img id="bj-dealer-img" src="ディーラー女.png" style="width: 100%; height: 100%; object-fit: cover; object-position: center top; transform: scale(1.2);">
+        </div>
+        <div style="font-weight: bold; font-size: 12px; color: #bdc3c7; margin-top: 4px; font-family: 'Cinzel', serif; letter-spacing: 1px;">DEALER</div>
+        <div id="bj-dealer-cards" style="display: flex; justify-content: center; gap: 5px; min-height: 45px; margin-top: 5px;"></div>
     </div>
 
     <!-- 制限時間とインフォメーション -->
@@ -2013,47 +2016,7 @@ function runVisualTimer(seconds) {
     }, 1000);
 }
 
-// ロビー画面を開く (Firebaseから本物のテーブル情報を取得)
-async function goToBjLobby() {
-    clearInterval(localTimerId);
-    if(unsubscribeBj) { unsubscribeBj(); unsubscribeBj = null; }
-    
-    const channelList = document.getElementById('bj-channel-list');
-    channelList.innerHTML = '<div style="text-align:center; color:#7f8c8d;">オンラインテーブルを取得中...</div>';
-    showScreen('screen-bj-lobby');
 
-    if(unsubscribeBjLobby) unsubscribeBjLobby();
-    unsubscribeBjLobby = window.onSnapshot(window.collection(window.db, "bj_tables"), (snapshot) => {
-        let tables = { "table_1": null, "table_2": null, "table_3": null };
-        snapshot.forEach(doc => { if (tables[doc.id] !== undefined) tables[doc.id] = doc.data(); });
-
-        channelList.innerHTML = '';
-        for (let i = 1; i <= 3; i++) {
-            let tid = "table_" + i;
-            let tData = tables[tid];
-            let seatsHtml = '';
-            let seatData = tData ? tData.seats : [null, null, null, null];
-            let isPlaying = tData && tData.status !== 'waiting';
-
-            for (let s = 0; s < 4; s++) {
-                let seat = seatData[s];
-                if (seat) {
-                    seatsHtml += `<div class="bj-seat-btn bj-seat-taken" style="background:#34495e;">${seat.avatar}<br>${seat.name}</div>`;
-                } else if (isPlaying) {
-                    seatsHtml += `<div class="bj-seat-btn bj-seat-taken" style="background:#7f8c8d;">プレイ中</div>`;
-                } else {
-                    seatsHtml += `<button class="bj-seat-btn bj-seat-empty" onclick="joinBjTable('${tid}', ${s})">座る</button>`;
-                }
-            }
-            channelList.innerHTML += `
-                <div class="bj-channel">
-                    <div style="font-weight: bold; color: #2c3e50;">テーブル ${i} (オンライン)</div>
-                    <div class="bj-seats-preview">${seatsHtml}</div>
-                </div>
-            `;
-        }
-    });
-}
 
 // オンラインテーブルに参加
 async function joinBjTable(tableId, seatIndex) {
@@ -2449,36 +2412,131 @@ function resolveBjPayouts() {
     }
 }
 
-// 席を立つ (ホスト権限の譲渡など)
-async function leaveBjTable() {
-    clearInterval(localTimerId);
-    if (unsubscribeBj) { unsubscribeBj(); unsubscribeBj = null; }
+// =========================================
+// ブラックジャック用管理データ＆描画ロジック
+// =========================================
+let bjPlayers = [null, null, null, null]; // 4つの席のプレイヤーデータを保持する配列
+
+// 1. BJロビー（チャンネル画面）へ移動する関数
+function goToBjLobby() {
+    if (unsubscribeLobby) { unsubscribeLobby(); unsubscribeLobby = null; }
     
-    if (currentBjTableId && myBjSeatIndex !== -1) {
-        const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
-        try {
-            await window.runTransaction(window.db, async (t) => {
-                const snap = await t.get(tableRef);
-                if (!snap.exists()) return;
-                let d = snap.data();
-                d.seats[myBjSeatIndex] = null; // 自分を空席にする
-                
-                let activeCount = d.seats.filter(s => s !== null).length;
-                if (activeCount === 0) {
-                    d.hostId = null; // 全員いなくなったら初期化
-                    d.status = 'waiting';
-                } else if (d.hostId === myPlayerId) {
-                    let nextHost = d.seats.find(s => s !== null);
-                    d.hostId = nextHost.playerId; // 次の人にホストをパス
-                }
-                t.update(tableRef, d);
-            });
-        } catch(e) {}
+    const channelList = document.getElementById('bj-channel-list');
+    channelList.innerHTML = `
+        <div class="bj-channel">
+            <div style="font-weight: bold; color: #2c3e50; font-size: 15px;">🔰 初心者テーブル (ミニマムBet: 10)</div>
+            <div class="bj-seats-preview" style="display: flex; gap: 5px; margin-top: 8px;">
+                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(0)">1番席に座る</button>
+                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(1)">2番席に座る</button>
+                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(2)">3番席に座る</button>
+                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(3)">4番席に座る</button>
+            </div>
+        </div>
+    `;
+    showScreen('screen-bj-lobby');
+}
+
+// 2. 選択した席に座ってゲーム画面へ遷移する関数
+function enterBjGame(mySeatIndex) {
+    // 自分の名前を取得
+    const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
+    
+    // 4つの席のデータを構築 (自分を指定した席に、他はNPCで埋める)
+    for (let i = 0; i < 4; i++) {
+        if (i === mySeatIndex) {
+            // プレイヤー自身
+            bjPlayers[i] = {
+                name: pName,
+                avatar: currentAvatar,
+                coins: coins,
+                isSelf: true,
+                cards: [] // ここに ['A', '10'] などのカードが入る想定
+            };
+        } else {
+            // 仮想の他プレイヤー (NPC)
+            const randomNpcName = npcNames[Math.floor(Math.random() * npcNames.length)];
+            const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+            const randomCoins = Math.floor(Math.random() * 5000) + 300;
+            bjPlayers[i] = {
+                name: randomNpcName,
+                avatar: randomAvatar,
+                coins: randomCoins,
+                isSelf: false,
+                cards: []
+            };
+        }
     }
-    myBjSeatIndex = -1;
-    currentBjTableId = null;
-    isBjHost = false;
-    goToBjLobby();
+    
+    // ディーラーの初期画像を設定（男/女をランダムで選ぶ等）
+    const dealerImages = ['ディーラー女.png', 'ディーラー男.png'];
+    const randomDealer = dealerImages[Math.floor(Math.random() * dealerImages.length)];
+    document.getElementById('bj-dealer-img').src = randomDealer;
+
+    // 席のUIを描画して画面を切り替える
+    updateBjSeats();
+    showScreen('screen-bj-game');
+}
+
+// 3. アバター・名前・所持金を席のUIにリアルタイム反映する関数
+function updateBjSeats() {
+    const seatsArea = document.getElementById('bj-seats-area');
+    seatsArea.innerHTML = '';
+
+    bjPlayers.forEach((player, index) => {
+        if (!player) return;
+
+        // アバターのHTML生成 (画像か絵文字かを判定)
+        let avatarHtml = '';
+        if (player.avatar && player.avatar.includes('.png')) {
+            avatarHtml = `<img src="${player.avatar}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%;">`;
+        } else {
+            avatarHtml = `<span style="font-size: 20px;">${player.avatar || '👤'}</span>`;
+        }
+
+        // 自分の席には特別な黄色枠（my-seat）を付与
+        const seatClass = player.isSelf ? 'bj-player-seat my-seat' : 'bj-player-seat';
+
+        // プレイヤーの手札カードをHTML化する処理
+        let cardsHtml = '<div style="min-height: 24px; display: flex; justify-content: center; gap: 2px; margin-bottom: 5px;">';
+        if (player.cards && player.cards.length > 0) {
+            player.cards.forEach(card => {
+                cardsHtml += `<span class="bj-card">${card}</span>`;
+            });
+        } else {
+            cardsHtml += `<span style="font-size: 10px; color: #7f8c8d;">No Card</span>`;
+        }
+        cardsHtml += '</div>';
+
+        // 席のHTMLを組み立てて追加
+        seatsArea.innerHTML += `
+            <div class="${seatClass}" style="display: flex; flex-direction: column; justify-content: space-between; padding: 6px 2px; min-height: 130px; box-sizing: border-box;">
+                <!-- 1. カードエリア (最上部) -->
+                ${cardsHtml}
+                
+                <!-- 2. アバターエリア (中央) -->
+                <div style="width: 38px; height: 38px; border-radius: 50%; overflow: hidden; background: #2c3e50; margin: 0 auto; display: flex; justify-content: center; align-items: center; border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                    ${avatarHtml}
+                </div>
+                
+                <!-- 3. 名前エリア (下部) -->
+                <div style="font-size: 10px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; margin-top: 4px; width: 100%; text-align: center;">
+                    ${player.name}
+                </div>
+                
+                <!-- 4. 所持金エリア (最下部) -->
+                <div style="font-size: 9px; color: #f1c40f; font-weight: bold; text-align: center; margin-top: 2px;">
+                    🪙 ${player.coins.toLocaleString()}
+                </div>
+            </div>
+        `;
+    });
+}
+
+// 4. ゲームを退出するときの処理
+function leaveBjTable() {
+    if (confirm("席を立ちますか？ (賭けている途中のコインは没収されます)")) {
+        goToBjLobby();
+    }
 }
     
     function goToLobbyScreen() {
