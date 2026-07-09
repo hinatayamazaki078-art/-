@@ -2356,13 +2356,15 @@ function renderBjSeatsUI() {
                              : (seat.status === 'stand' ? '<span style="color:#3498db;">STAND</span>' : '');
 
             seatsArea.innerHTML += `
-                <div class="${seatClass}" style="${styleAttr}">
-                    ${betText}
-                    <div style="font-size:24px;">${seat.avatar}</div>
-                    <div style="font-size:10px; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${seat.name}</div>
-                    <div id="bj-seat-cards-${i}" style="min-height:30px; margin-top:5px;">${renderBjCards(seat.hand)}</div>
-                    <div style="font-size:11px;">${statusText}${score}</div>
-                </div>`;
+ <div class="${seatClass}" style="${styleAttr}">
+ ${betText}
+ <div style="width: 100%; height: 45px; display: flex; justify-content: center; align-items: center; overflow: hidden; margin-top: 5px;">
+ ${renderAvatarHtml(seat.avatar)}
+ </div>
+ <div style="font-size:10px; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; margin-top: 2px;">${seat.name}</div>
+ <div id="bj-seat-cards-${i}" style="min-height:30px; margin-top:5px;">${renderBjCards(seat.hand)}</div>
+ <div style="font-size:11px;">${statusText}${score}</div>
+ </div>`;
         } else {
             seatsArea.innerHTML += `<div class="bj-player-seat"><div style="font-size:10px; color:#7f8c8d; margin-top:auto; margin-bottom:auto;">空席</div></div>`;
         }
