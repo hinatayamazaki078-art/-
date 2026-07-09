@@ -2044,7 +2044,7 @@ async function joinBjTable(tableId, seatIndex) {
             data.seats[seatIndex] = {
                 playerId: myPlayerId,
                 name: document.getElementById('player-name').innerText.replace('👑 ', ''),
-                avatar: currentAvatar.includes('.png') ? '🧑‍💻' : currentAvatar,
+                avatar: currentAvatar, // ←そのままアバターのデータを送るように修正
                 bet: 0, hand: [], status: "waiting"
             };
             t.set(tableRef, data);
@@ -2303,13 +2303,14 @@ function updateBjGameUI() {
 }
 
 // 席のUI更新
-function renderBjSeatsUI(seats) {
+// 席のUI更新 (オンライン完全対応・デザイン調整版)
+function renderBjSeatsUI() {
     const seatsArea = document.getElementById('bj-seats-area');
     if (!seatsArea) return;
     seatsArea.innerHTML = ''; // 一度きれいにリセット
 
     for (let i = 0; i < 4; i++) {
-        const seat = seats[i];
+        const seat = bjSeats[i]; // Firebaseから取得したオンラインデータ
 
         if (seat) {
             // --- 👤 誰かが座っている席の描画 ---
@@ -2317,57 +2318,54 @@ function renderBjSeatsUI(seats) {
             // 1. アバターの表示判定 (画像URLか、それとも絵文字文字か)
             let avatarHtml = '';
             if (seat.avatar && (seat.avatar.includes('.png') || seat.avatar.startsWith('http'))) {
-                // 画像アバターの場合、丸枠の中に綺麗に収める
-                avatarHtml = `<img src="${seat.avatar}" style="width: 40px; height: 40px; object-fit: contain; border-radius: 50%; background: #fff; padding: 2px; box-shadow: 0 0 5px rgba(0,0,0,0.5);">`;
+                // 画像アバターの場合、丸枠の中に綺麗に収める（前回と同じ綺麗なCSS）
+                avatarHtml = `<img src="${seat.avatar}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%;">`;
             } else {
                 // 絵文字アバターの場合
-                avatarHtml = `<div style="font-size: 30px; line-height: 1;">${seat.avatar || '👤'}</div>`;
+                avatarHtml = `<div style="font-size: 24px; line-height: 1;">${seat.avatar || '👤'}</div>`;
             }
 
-            // 2. 所持金（コイン）の取得（データ名がcoinsでもfundsでも対応できるようにしています）
+            // 2. 所持金（コイン）の取得
             const seatCoins = seat.coins !== undefined ? seat.coins : (seat.funds !== undefined ? seat.funds : 0);
 
             // 自分の席かどうかの判定（スタイル変更用）
-            const isMe = (seat.id === window.myPlayerId || seat.name === (document.getElementById('player-name')?.innerText.replace('👑 ', '')));
+            const isMe = (seat.playerId === window.myPlayerId);
             const seatClass = isMe ? 'bj-player-seat my-seat' : 'bj-player-seat';
             const styleAttr = isMe ? 'border: 2px solid #f1c40f; background: rgba(241,196,15,0.1);' : '';
 
-            // ベット額やステータスのテキスト処理（既存の仕組みを維持）
-            let betText = seat.bet > 0 ? `<div class="bj-bet-chip">🪙${seat.bet}</div>` : '';
+            // ベット額やステータスのテキスト処理
+            let betText = seat.bet > 0 ? `<div class="bj-bet-chip" style="font-size: 10px; color:#f1c40f; text-align:center; margin-bottom:2px;">ベット: ${seat.bet}</div>` : '';
             let statusText = '';
-            if (seat.status === 'bj') statusText = '💥 BJ ';
-            else if (seat.status === 'bust') statusText = '💥 BUST ';
-            else if (seat.status === 'stand') statusText = '✋ STAND ';
+            if (seat.status === 'burst') statusText = '<span style="color:#e74c3c;">💥 BUST</span>';
+            else if (seat.status === 'stand') statusText = '<span style="color:#2ecc71;">✋ STAND</span>';
+            else if (seat.status === 'ready') statusText = '<span style="color:#f1c40f;">👍 READY</span>';
             
-            let score = seat.score ? `(${seat.score})` : '';
-
-            // HTMLの組み立て（アバター、名前、所持金、カードを縦に綺麗に並べる）
+            // HTMLの組み立て（綺麗に枠内に収める）
             seatsArea.innerHTML += `
-                <div class="${seatClass}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5px; min-width: 70px; ${styleAttr}">
+                <div class="${seatClass}" style="display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 6px 2px; min-height: 140px; box-sizing: border-box; ${styleAttr}">
                     ${betText}
-                    <div style="height: 42px; display: flex; align-items: center; justify-content: center; margin-bottom: 3px;">
-                        ${avatarHtml}
-                    </div>
-                    <div style="font-size: 10px; font-weight: bold; color: white; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 65px; text-align: center;">
-                        ${seat.name}
-                    </div>
-                    <div style="font-size: 10px; color: #f1c40f; font-weight: bold; margin-top: 1px; text-align: center;">
-                        🪙${Number(seatCoins).toLocaleString()}
-                    </div>
-                    <div id="bj-seat-cards-${i}" style="min-height: 30px; margin-top: 4px; display: flex; justify-content: center; gap: 2px;">
+                    
+                    <div id="bj-seat-cards-${i}" style="min-height: 30px; display: flex; justify-content: center; gap: 2px; margin-bottom: 4px;">
                         ${typeof renderBjCards === 'function' ? renderBjCards(seat.hand) : ''}
                     </div>
-                    <div style="font-size: 10px; color: #fff; margin-top: 2px; font-weight: bold;">
-                        ${statusText}${score}
+
+                    <div style="width: 38px; height: 38px; border-radius: 50%; overflow: hidden; background: #2c3e50; display: flex; justify-content: center; align-items: center; border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        ${avatarHtml}
+                    </div>
+                    
+                    <div style="font-size: 10px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; margin-top: 4px; width: 100%; text-align: center; max-width: 65px;">
+                        ${seat.name}
+                    </div>
+                    
+                    <div style="font-size: 9px; font-weight: bold; margin-top: 2px; text-align: center;">
+                        ${statusText}
                     </div>
                 </div>
             `;
         } else {
             // --- 🪑 空席の描画 ---
-            // ※既存の空席をタップして座るボタンの関数（例: joinBjSeat(i) や takeSeat(i)）に合わせてお使いください
-            const clickAction = typeof joinBjSeat === 'function' ? `joinBjSeat(${i})` : (typeof takeSeat === 'function' ? `takeSeat(${i})` : `sitDown(${i})`);
             seatsArea.innerHTML += `
-                <div class="bj-player-seat" style="display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; border: 2px dashed #7f8c8d; background: rgba(0,0,0,0.3); min-height: 110px;" onclick="${clickAction}">
+                <div class="bj-player-seat" style="display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; border: 2px dashed #7f8c8d; background: rgba(0,0,0,0.3); min-height: 140px;" onclick="joinBjTable('${currentBjTableId}', ${i})">
                     <div style="color: #2ecc71; font-weight: bold; font-size: 13px; margin-bottom: 2px;">🪑 空席</div>
                     <div style="font-size: 9px; color: #bdc3c7;">タップして座る</div>
                 </div>
@@ -2409,133 +2407,6 @@ function resolveBjPayouts() {
                 seats: bjSeats.map(s => s ? { ...s, hand: [], bet: 0, status: 'waiting' } : null)
             });
         }, 5000);
-    }
-}
-
-// =========================================
-// ブラックジャック用管理データ＆描画ロジック
-// =========================================
-let bjPlayers = [null, null, null, null]; // 4つの席のプレイヤーデータを保持する配列
-
-// 1. BJロビー（チャンネル画面）へ移動する関数
-function goToBjLobby() {
-    if (unsubscribeLobby) { unsubscribeLobby(); unsubscribeLobby = null; }
-    
-    const channelList = document.getElementById('bj-channel-list');
-    channelList.innerHTML = `
-        <div class="bj-channel">
-            <div style="font-weight: bold; color: #2c3e50; font-size: 15px;">🔰 初心者テーブル (ミニマムBet: 10)</div>
-            <div class="bj-seats-preview" style="display: flex; gap: 5px; margin-top: 8px;">
-                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(0)">1番席に座る</button>
-                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(1)">2番席に座る</button>
-                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(2)">3番席に座る</button>
-                <button class="bj-seat-btn bj-seat-empty" onclick="enterBjGame(3)">4番席に座る</button>
-            </div>
-        </div>
-    `;
-    showScreen('screen-bj-lobby');
-}
-
-// 2. 選択した席に座ってゲーム画面へ遷移する関数
-function enterBjGame(mySeatIndex) {
-    // 自分の名前を取得
-    const pName = document.getElementById('player-name').innerText.replace('👑 ', '') || 'ゲスト';
-    
-    // 4つの席のデータを構築 (自分を指定した席に、他はNPCで埋める)
-    for (let i = 0; i < 4; i++) {
-        if (i === mySeatIndex) {
-            // プレイヤー自身
-            bjPlayers[i] = {
-                name: pName,
-                avatar: currentAvatar,
-                coins: coins,
-                isSelf: true,
-                cards: [] // ここに ['A', '10'] などのカードが入る想定
-            };
-        } else {
-            // 仮想の他プレイヤー (NPC)
-            const randomNpcName = npcNames[Math.floor(Math.random() * npcNames.length)];
-            const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
-            const randomCoins = Math.floor(Math.random() * 5000) + 300;
-            bjPlayers[i] = {
-                name: randomNpcName,
-                avatar: randomAvatar,
-                coins: randomCoins,
-                isSelf: false,
-                cards: []
-            };
-        }
-    }
-    
-    // ディーラーの初期画像を設定（男/女をランダムで選ぶ等）
-    const dealerImages = ['ディーラー女.png', 'ディーラー男.png'];
-    const randomDealer = dealerImages[Math.floor(Math.random() * dealerImages.length)];
-    document.getElementById('bj-dealer-img').src = randomDealer;
-
-    // 席のUIを描画して画面を切り替える
-    updateBjSeats();
-    showScreen('screen-bj-game');
-}
-
-// 3. アバター・名前・所持金を席のUIにリアルタイム反映する関数
-function updateBjSeats() {
-    const seatsArea = document.getElementById('bj-seats-area');
-    seatsArea.innerHTML = '';
-
-    bjPlayers.forEach((player, index) => {
-        if (!player) return;
-
-        // アバターのHTML生成 (画像か絵文字かを判定)
-        let avatarHtml = '';
-        if (player.avatar && player.avatar.includes('.png')) {
-            avatarHtml = `<img src="${player.avatar}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 20%;">`;
-        } else {
-            avatarHtml = `<span style="font-size: 20px;">${player.avatar || '👤'}</span>`;
-        }
-
-        // 自分の席には特別な黄色枠（my-seat）を付与
-        const seatClass = player.isSelf ? 'bj-player-seat my-seat' : 'bj-player-seat';
-
-        // プレイヤーの手札カードをHTML化する処理
-        let cardsHtml = '<div style="min-height: 24px; display: flex; justify-content: center; gap: 2px; margin-bottom: 5px;">';
-        if (player.cards && player.cards.length > 0) {
-            player.cards.forEach(card => {
-                cardsHtml += `<span class="bj-card">${card}</span>`;
-            });
-        } else {
-            cardsHtml += `<span style="font-size: 10px; color: #7f8c8d;">No Card</span>`;
-        }
-        cardsHtml += '</div>';
-
-        // 席のHTMLを組み立てて追加
-        seatsArea.innerHTML += `
-            <div class="${seatClass}" style="display: flex; flex-direction: column; justify-content: space-between; padding: 6px 2px; min-height: 130px; box-sizing: border-box;">
-                <!-- 1. カードエリア (最上部) -->
-                ${cardsHtml}
-                
-                <!-- 2. アバターエリア (中央) -->
-                <div style="width: 38px; height: 38px; border-radius: 50%; overflow: hidden; background: #2c3e50; margin: 0 auto; display: flex; justify-content: center; align-items: center; border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                    ${avatarHtml}
-                </div>
-                
-                <!-- 3. 名前エリア (下部) -->
-                <div style="font-size: 10px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; margin-top: 4px; width: 100%; text-align: center;">
-                    ${player.name}
-                </div>
-                
-                <!-- 4. 所持金エリア (最下部) -->
-                <div style="font-size: 9px; color: #f1c40f; font-weight: bold; text-align: center; margin-top: 2px;">
-                    🪙 ${player.coins.toLocaleString()}
-                </div>
-            </div>
-        `;
-    });
-}
-
-// 4. ゲームを退出するときの処理
-function leaveBjTable() {
-    if (confirm("席を立ちますか？ (賭けている途中のコインは没収されます)")) {
-        goToBjLobby();
     }
 }
     
