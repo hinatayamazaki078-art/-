@@ -1896,6 +1896,83 @@ function buyShopItem(itemId) {
         });
     }
 
+    // 👑【復旧】オンラインロビー画面を開く関数
+async function goToBjLobby() {
+    clearInterval(localTimerId);
+    if(unsubscribeBj) { unsubscribeBj(); unsubscribeBj = null; }
+    
+    const channelList = document.getElementById('bj-channel-list');
+    channelList.innerHTML = '<div style="text-align:center; color:#7f8c8d;">オンラインテーブルを取得中...</div>';
+    showScreen('screen-bj-lobby');
+
+    if(unsubscribeBjLobby) unsubscribeBjLobby();
+    unsubscribeBjLobby = window.onSnapshot(window.collection(window.db, "bj_tables"), (snapshot) => {
+        let tables = { "table_1": null, "table_2": null, "table_3": null };
+        snapshot.forEach(doc => { if (tables[doc.id] !== undefined) tables[doc.id] = doc.data(); });
+
+        channelList.innerHTML = '';
+        for (let i = 1; i <= 3; i++) {
+            let tid = "table_" + i;
+            let tData = tables[tid];
+            let seatsHtml = '';
+            let seatData = tData ? tData.seats : [null, null, null, null];
+            let isPlaying = tData && tData.status !== 'waiting';
+
+            for (let s = 0; s < 4; s++) {
+                let seat = seatData[s];
+                if (seat) {
+                    // チャンネル画面でも丸枠の画像アバターが見えるように調整
+                    let av = seat.avatar;
+                    let avHtml = (av && av.includes('.png')) ? `<img src="${av}" style="width:24px; height:24px; border-radius:50%; object-fit:cover; border:1px solid #fff;">` : `<span style="font-size:16px;">${av}</span>`;
+                    seatsHtml += `<div class="bj-seat-btn bj-seat-taken" style="background:#34495e; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:4px 0;">${avHtml}<span style="font-size:10px;">${seat.name}</span></div>`;
+                } else if (isPlaying) {
+                    seatsHtml += `<div class="bj-seat-btn bj-seat-taken" style="background:#7f8c8d; display:flex; align-items:center; justify-content:center;">プレイ中</div>`;
+                } else {
+                    seatsHtml += `<button class="bj-seat-btn bj-seat-empty" onclick="joinBjTable('${tid}', ${s})">座る</button>`;
+                }
+            }
+            channelList.innerHTML += `
+                <div class="bj-channel">
+                    <div style="font-weight: bold; color: #2c3e50; font-size: 13px; margin-bottom: 4px;">テーブル ${i} (オンライン)</div>
+                    <div class="bj-seats-preview">${seatsHtml}</div>
+                </div>
+            `;
+        }
+    });
+}
+
+// 👑【復旧】席を立つ関数 (ホスト権限の譲渡など)
+async function leaveBjTable() {
+    clearInterval(localTimerId);
+    if (unsubscribeBj) { unsubscribeBj(); unsubscribeBj = null; }
+    
+    if (currentBjTableId && myBjSeatIndex !== -1) {
+        const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+        try {
+            await window.runTransaction(window.db, async (t) => {
+                const snap = await t.get(tableRef);
+                if (!snap.exists()) return;
+                let d = snap.data();
+                d.seats[myBjSeatIndex] = null; // 自分を空席にする
+                
+                let activeCount = d.seats.filter(s => s !== null).length;
+                if (activeCount === 0) {
+                    d.hostId = null; // 全員いなくなったら初期化
+                    d.status = 'waiting';
+                } else if (d.hostId === myPlayerId) {
+                    let nextHost = d.seats.find(s => s !== null);
+                    d.hostId = nextHost.playerId; // 次の人にホストをパス
+                }
+                t.update(tableRef, d);
+            });
+        } catch(e) {}
+    }
+    myBjSeatIndex = -1;
+    currentBjTableId = null;
+    isBjHost = false;
+    goToBjLobby();
+}
+    
     // 2. 相手が切断したとき（残された側：勝利判定）の処理
     function handleOpponentDisconnect() {
     logEl.innerHTML += `<div style="color:#e74c3c; font-size:16px; margin-top:4px;">⚠️ 対戦相手との接続が切断されました。</div>`;
