@@ -375,6 +375,49 @@
     </div>
 </div>
 
+<!-- ▼ ブラックジャック：チャンネル（ロビー）画面 ▼ -->
+<div id="screen-bj-lobby" class="screen">
+    <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">BJ チャンネル選択</h2>
+    <p style="text-align: center; color: #7f8c8d; margin-bottom: 15px;">空いている席に座ってゲームに参加します。</p>
+    
+    <div id="bj-channel-list" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px;">
+        <!-- ここにテーブル（チャンネル）一覧がJSで生成されます -->
+    </div>
+
+    <button style="background-color: #7f8c8d; margin-top: 10px;" onclick="goToHome()">🏠 ホームに戻る</button>
+</div>
+
+<!-- ▼ ブラックジャック：ゲーム画面 ▼ -->
+<div id="screen-bj-game" class="screen" style="background-color: #0b3d0b; color: white; justify-content: space-between; padding: 10px;">
+    
+    <!-- ディーラーエリア -->
+    <div style="text-align: center;">
+        <div style="font-size: 40px;">🤖</div>
+        <div style="font-weight: bold; margin-bottom: 5px;">DEALER</div>
+        <div id="bj-dealer-cards" style="display: flex; justify-content: center; gap: 5px; min-height: 60px;"></div>
+    </div>
+
+    <!-- 制限時間とインフォメーション -->
+    <div style="text-align: center; margin: 10px 0;">
+        <div id="bj-info-text" style="color: #f1c40f; font-weight: bold; font-size: 16px;">ベットを受け付けています...</div>
+        <div style="font-size: 24px; font-weight: bold;">TIME: <span id="bj-timer-display" style="color: #e74c3c;">10</span></div>
+    </div>
+
+    <!-- プレイヤーのアクションエリア -->
+    <div id="bj-action-area" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+        <button id="bj-btn-bet" style="background: #f1c40f; color: #111; flex: 1;" onclick="bjPlaceBet(100)">100🪙 ベット</button>
+        <button id="bj-btn-hit" style="background: #3498db; flex: 1; display: none;" onclick="bjHit()">ヒット</button>
+        <button id="bj-btn-stand" style="background: #e74c3c; flex: 1; display: none;" onclick="bjStand()">スタンド</button>
+    </div>
+
+    <!-- 4つの席（擬似オンライン） -->
+    <div id="bj-seats-area" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
+        <!-- ここに4席がJSで生成されます -->
+    </div>
+    
+    <button style="background-color: #566573; padding: 10px; margin-top: 10px;" onclick="leaveBjTable()">🚪 席を立つ</button>
+</div>
+    
 <div id="friend-overlay">
     <h2 style="color:#f1c40f; text-align:center; margin-top:10px;">フレンド</h2>
     <div class="friend-search-bar">
@@ -424,6 +467,30 @@
                         object-fit: cover; /* 画像を丸枠いっぱいに広げ、はみ出した部分をカット */
                         object-position: center 20%; /* 顔が中心になるように、少し上の方を映す */
                     }
+
+                    /* =========================================
+   ブラックジャック用スタイル
+   ========================================= */
+.bj-channel {
+    background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.bj-seats-preview {
+    display: flex; gap: 5px; margin-top: 8px;
+}
+.bj-seat-btn {
+    flex: 1; padding: 8px 0; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; text-align: center;
+}
+.bj-seat-empty { background: #2ecc71; color: white; }
+.bj-seat-taken { background: #95a5a6; color: white; cursor: not-allowed; }
+
+/* プレイ画面の席 */
+.bj-player-seat {
+    background: rgba(0,0,0,0.5); border: 2px solid #555; border-radius: 8px; padding: 5px; text-align: center; display: flex; flex-direction: column; justify-content: flex-end; min-height: 120px;
+}
+.bj-player-seat.my-seat { border-color: #f1c40f; background: rgba(241, 196, 15, 0.2); }
+.bj-card {
+    background: white; color: black; border-radius: 4px; padding: 2px 4px; font-weight: bold; font-size: 12px; display: inline-block; margin: 2px; border: 1px solid #333;
+}
                 </style>
             </div>
 
@@ -527,6 +594,9 @@
            
             <!-- スロット追加ボタン -->
             <button class="battle-btn" style="width:100%; padding: 10px; font-size: 14px; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: #fff; border-color: #8e44ad; margin-bottom: 12px;" onclick="goToSlot()">🎰 スロットに挑戦</button>
+            
+            <!-- スロット追加ボタンの下あたりに追加 -->
+<button class="battle-btn" style="width:100%; padding: 10px; font-size: 14px; background: linear-gradient(145deg, #1abc9c, #16a085); color: #fff; border-color: #1abc9c; margin-bottom: 12px;" onclick="goToBjLobby()">🃏 ブラックジャック</button>
             <!-- アバター変更ボタン (高さを抑えてスリム化) -->
             <button class="change-avatar-btn" style="width:100%; padding: 10px; font-size: 14px; margin-bottom: 12px;" onclick="openAvatarList()">👕 アバターを変更する</button>
 
@@ -1870,6 +1940,163 @@ function buyShopItem(itemId) {
 
         isOnlineBattle = false; // 2重処理防止
     }
+    
+    // =========================================
+// 新規追加：ブラックジャック（疑似オンライン）ロジック
+// =========================================
+let bjTimer = null;
+let bjTimeLeft = 10;
+let myBjSeatIndex = -1;
+
+// チャンネル（ロビー）画面を開く
+function goToBjLobby() {
+    const channelList = document.getElementById('bj-channel-list');
+    channelList.innerHTML = '';
+
+    // ランダムに3つのテーブル（チャンネル）を生成
+    for (let i = 1; i <= 3; i++) {
+        let seatsHtml = '';
+        // 各テーブルに4つの席
+        for (let s = 0; s < 4; s++) {
+            // 50%の確率でNPCが座っている（擬似オンライン）
+            const isTaken = Math.random() > 0.5; 
+            if (isTaken) {
+                const npcAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+                let npcIcon = npcAvatar.includes('.png') ? '👤' : npcAvatar; // 簡易表示
+                seatsHtml += `<div class="bj-seat-btn bj-seat-taken">${npcIcon}<br>着席中</div>`;
+            } else {
+                seatsHtml += `<button class="bj-seat-btn bj-seat-empty" onclick="joinBjTable(${s})">座る</button>`;
+            }
+        }
+
+        channelList.innerHTML += `
+            <div class="bj-channel">
+                <div style="font-weight: bold; color: #2c3e50;">テーブル ${i} (ベット: 100🪙)</div>
+                <div class="bj-seats-preview">${seatsHtml}</div>
+            </div>
+        `;
+    }
+    showScreen('screen-bj-lobby');
+}
+
+// 席に座ってゲーム画面へ
+function joinBjTable(seatIndex) {
+    myBjSeatIndex = seatIndex;
+    
+    // ゲーム画面の4席を初期化
+    const seatsArea = document.getElementById('bj-seats-area');
+    seatsArea.innerHTML = '';
+
+    for (let i = 0; i < 4; i++) {
+        let seatClass = (i === myBjSeatIndex) ? "bj-player-seat my-seat" : "bj-player-seat";
+        
+        let content = '';
+        if (i === myBjSeatIndex) {
+            content = `<div style="font-size:24px;">${currentAvatar.includes('.png') ? '🧑‍💻' : currentAvatar}</div>
+                       <div style="font-size:10px; color:#f1c40f;">あなた</div>
+                       <div id="bj-seat-cards-${i}"></div>`;
+        } else {
+            // NPC
+            const isNpc = Math.random() > 0.3; // 70%の確率でNPCが同席
+            if (isNpc) {
+                const npcName = npcNames[Math.floor(Math.random() * npcNames.length)];
+                content = `<div style="font-size:24px;">🤖</div>
+                           <div style="font-size:10px; color:#bdc3c7;">${npcName}</div>
+                           <div id="bj-seat-cards-${i}"></div>`;
+            } else {
+                content = `<div style="font-size:10px; color:#7f8c8d; margin-top:auto;">空席</div>`;
+            }
+        }
+
+        seatsArea.innerHTML += `<div class="${seatClass}" id="bj-seat-${i}">${content}</div>`;
+    }
+
+    // UI初期化
+    document.getElementById('bj-dealer-cards').innerHTML = '';
+    document.getElementById('bj-btn-bet').style.display = 'block';
+    document.getElementById('bj-btn-hit').style.display = 'none';
+    document.getElementById('bj-btn-stand').style.display = 'none';
+    
+    showScreen('screen-bj-game');
+    startBjTimer("ベットを受け付けています...", 10, startBjGame);
+}
+
+// 席を立つ
+function leaveBjTable() {
+    clearInterval(bjTimer);
+    goToBjLobby();
+}
+
+// タイマー機能（制限時間を設ける）
+function startBjTimer(infoText, seconds, callback) {
+    clearInterval(bjTimer);
+    document.getElementById('bj-info-text').innerText = infoText;
+    bjTimeLeft = seconds;
+    document.getElementById('bj-timer-display').innerText = bjTimeLeft;
+
+    bjTimer = setInterval(() => {
+        bjTimeLeft--;
+        document.getElementById('bj-timer-display').innerText = bjTimeLeft;
+        
+        if (bjTimeLeft <= 0) {
+            clearInterval(bjTimer);
+            if (callback) callback(); // 時間切れ時の処理を実行
+        }
+    }, 1000);
+}
+
+// ベット処理（モック）
+function bjPlaceBet(amount) {
+    if (coins < amount) {
+        alert("コインが足りません！");
+        return;
+    }
+    coins -= amount;
+    updateCoinUI();
+    document.getElementById('bj-btn-bet').style.display = 'none';
+    document.getElementById('bj-info-text').innerText = "他のプレイヤーのベットを待っています...";
+}
+
+// ゲーム開始（カード配布）
+function startBjGame() {
+    // ディーラーにカード
+    document.getElementById('bj-dealer-cards').innerHTML = `<div class="bj-card">♠ 10</div><div class="bj-card">？</div>`;
+    
+    // プレイヤーにカード
+    for (let i = 0; i < 4; i++) {
+        const cardArea = document.getElementById(`bj-seat-cards-${i}`);
+        if (cardArea) {
+            cardArea.innerHTML = `<div class="bj-card">♥ 7</div><div class="bj-card">♣ K</div>`;
+        }
+    }
+
+    document.getElementById('bj-btn-hit').style.display = 'block';
+    document.getElementById('bj-btn-stand').style.display = 'block';
+    
+    startBjTimer("あなたのアクションを選択してください", 15, finishBjGame);
+}
+
+// ヒット・スタンド（モック）
+function bjHit() { alert("ヒットしました（機能はモックです）"); }
+function bjStand() { 
+    document.getElementById('bj-btn-hit').style.display = 'none';
+    document.getElementById('bj-btn-stand').style.display = 'none';
+    document.getElementById('bj-info-text').innerText = "他のプレイヤーを待っています...";
+}
+
+// ゲーム終了・結果発表
+function finishBjGame() {
+    document.getElementById('bj-btn-hit').style.display = 'none';
+    document.getElementById('bj-btn-stand').style.display = 'none';
+    
+    document.getElementById('bj-dealer-cards').innerHTML = `<div class="bj-card">♠ 10</div><div class="bj-card">♦ 8</div> (18)`;
+    document.getElementById('bj-info-text').innerText = "勝敗判定... (次ゲームは数秒後)";
+    
+    // 5秒後にロビーに戻すか、再ゲームするか
+    setTimeout(() => {
+        goToBjLobby();
+    }, 5000);
+}
     
     function goToLobbyScreen() {
         showScreen('screen-lobby');
