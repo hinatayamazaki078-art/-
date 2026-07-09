@@ -1953,464 +1953,488 @@ function buyShopItem(itemId) {
     }
     
     // =========================================
-// ブラックジャック（リアル疑似オンライン）完全版ロジック
+// ブラックジャック（完全オンライン対応版）ロジック
 // =========================================
-let bjTimer = null;
-let bjTimeLeft = 10;
 let myBjSeatIndex = -1;
+let currentBjTableId = null;
+let isBjHost = false; // 最初にテーブルに座った人が進行管理を兼任
+let unsubscribeBj = null;
+let unsubscribeBjLobby = null;
 
-// ゲーム状態管理用の変数
-let bjDeck = [];
 let bjDealerHand = [];
-let bjSeats = []; // 4つの席のデータを格納する配列
-let bjCurrentTurn = 0; // 現在どこの席のターンか (0〜3, 4=ディーラー)
+let bjSeats = [null, null, null, null];
+let bjCurrentTurn = 0;
+let bjGameStatus = "waiting"; 
 
-// トランプのデータ作成とシャッフル
-function initBjDeck() {
+let localTimerId = null;
+let hostTimerStarted = false;
+let hasResolvedPayout = false;
+let isDealerRunning = false;
+
+// トランプ生成（オンライン用は都度ランダム生成の無限シュー方式）
+function getRandomCard() {
     const suits = ['♥', '♦', '♣', '♠'];
     const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-    bjDeck = [];
-    for (let suit of suits) {
-        for (let val of values) {
-            bjDeck.push({ suit: suit, value: val });
-        }
-    }
-    // シャッフル
-    for (let i = bjDeck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [bjDeck[i], bjDeck[j]] = [bjDeck[j], bjDeck[i]];
-    }
+    let suit = suits[Math.floor(Math.random() * suits.length)];
+    let val = values[Math.floor(Math.random() * values.length)];
+    return { suit: suit, value: val };
 }
 
-// カードを1枚引く
-function drawBjCard() {
-    if (bjDeck.length === 0) initBjDeck();
-    return bjDeck.pop();
-}
-
-// ブラックジャックの点数計算 (Aを1か11か自動最適化)
+// スコア計算
 function calcBjScore(hand) {
-    let score = 0;
-    let aces = 0;
+    let score = 0; let aces = 0;
     for (let card of hand) {
-        if (card.value === 'A') {
-            aces++;
-            score += 11;
-        } else if (['J', 'Q', 'K'].includes(card.value)) {
-            score += 10;
-        } else {
-            score += parseInt(card.value);
-        }
+        if (card.value === 'A') { aces++; score += 11; }
+        else if (['J', 'Q', 'K'].includes(card.value)) { score += 10; }
+        else { score += parseInt(card.value); }
     }
-    while (score > 21 && aces > 0) {
-        score -= 10;
-        aces--;
-    }
+    while (score > 21 && aces > 0) { score -= 10; aces--; }
     return score;
 }
 
-// カードの見た目をHTML化するヘルパー
+// カードHTML生成
 function renderBjCards(hand, hideFirst = false) {
     return hand.map((card, index) => {
-        if (hideFirst && index === 1) {
-            return `<div class="bj-card" style="background:#34495e; color:white;">？</div>`;
-        }
+        if (hideFirst && index === 1) return `<div class="bj-card" style="background:#34495e; color:white;">？</div>`;
         const isRed = ['♥', '♦'].includes(card.suit);
         return `<div class="bj-card" style="color: ${isRed ? 'red' : 'black'}">${card.suit} ${card.value}</div>`;
     }).join('');
 }
 
-// チャンネル（ロビー）画面を開く
-function goToBjLobby() {
-    clearInterval(bjTimer);
-    const channelList = document.getElementById('bj-channel-list');
-    channelList.innerHTML = '';
-
-    // 安全対策：npcNames が未定義の場合のフォールバック
-    if (typeof npcNames === 'undefined') {
-        window.npcNames = ["サクラ", "たかし", "じゅん", "エミ", "ケン", "レイ"];
-    }
-
-    for (let i = 1; i <= 3; i++) {
-        let seatsHtml = '';
-        for (let s = 0; s < 4; s++) {
-            const isTaken = Math.random() > 0.5; 
-            if (isTaken) {
-                const npcName = npcNames[Math.floor(Math.random() * npcNames.length)];
-                seatsHtml += `<div class="bj-seat-btn bj-seat-taken">👤<br>${npcName}</div>`;
-            } else {
-                seatsHtml += `<button class="bj-seat-btn bj-seat-empty" onclick="joinBjTable(${s})">座る</button>`;
-            }
-        }
-        channelList.innerHTML += `
-            <div class="bj-channel">
-                <div style="font-weight: bold; color: #2c3e50;">テーブル ${i} (ベット: 100🪙)</div>
-                <div class="bj-seats-preview">${seatsHtml}</div>
-            </div>
-        `;
-    }
-    showScreen('screen-bj-lobby');
-}
-
-// 席に座ってゲーム画面へ
-// 席に座ってゲーム画面へ（一部書き換え）
-function joinBjTable(seatIndex) {
-    myBjSeatIndex = seatIndex;
-    bjSeats = [];
-
-    // 4つの席のデータを初期化
-    for (let i = 0; i < 4; i++) {
-        if (i === myBjSeatIndex) {
-            bjSeats.push({
-                isNpc: false, name: "あなた", avatar: currentAvatar.includes('.png') ? '🧑‍💻' : currentAvatar,
-                coins: coins, hand: [], bet: 0, status: "waiting"
-            });
-        } else {
-            const isNpcPresent = Math.random() > 0.3;
-            if (isNpcPresent) {
-                bjSeats.push({
-                    isNpc: true, name: npcNames[Math.floor(Math.random() * npcNames.length)], avatar: "🤖",
-                    coins: Math.floor(Math.random() * 5000) + 500, hand: [], bet: 0, status: "waiting"
-                });
-            } else {
-                bjSeats.push(null);
-            }
-        }
-    }
-
-    renderBjSeatsUI();
-    
-    // UI初期化（ここを変更）
-    document.getElementById('bj-dealer-cards').innerHTML = '';
-    document.getElementById('bj-bet-buttons').style.display = 'flex';
-    document.getElementById('bj-play-buttons').style.display = 'none';
-    
-    showScreen('screen-bj-game');
-    
-    startBjTimer("ベット額を選んでください...", 10, () => {
-        if (bjSeats[myBjSeatIndex] && bjSeats[myBjSeatIndex].bet === 0) {
-            bjPlaceBet(10); // 放置した場合は最小額の10ベット
-        }
-        startBjGame();
-    });
-}
-
-// ベットボタンを押した時（ここを変更）
-function bjPlaceBet(amount) {
-    const mySeat = bjSeats[myBjSeatIndex];
-    if (!mySeat || mySeat.bet > 0) return;
-
-    if (coins < amount) {
-        alert("コインが足りません！");
-        return;
-    }
-    coins -= amount;
-    if (typeof updateCoinUI === 'function') updateCoinUI();
-    
-    mySeat.bet = amount;
-    mySeat.status = "ready";
-    
-    document.getElementById('bj-bet-buttons').style.display = 'none';
-    document.getElementById('bj-info-text').innerText = "他のプレイヤーのベットを待っています...";
-    
-    // 他のNPCにもランダムな額をベットさせる
-    const npcBets = [10, 50, 100, 500];
-    for (let i = 0; i < 4; i++) {
-        if (bjSeats[i] && bjSeats[i].isNpc) {
-            const randomBet = npcBets[Math.floor(Math.random() * npcBets.length)];
-            bjSeats[i].bet = randomBet;
-            bjSeats[i].coins -= randomBet;
-            bjSeats[i].status = "ready";
-        }
-    }
-    renderBjSeatsUI();
-}
-
-// 席のUIをリアルタイム更新する関数
-function renderBjSeatsUI() {
-    const seatsArea = document.getElementById('bj-seats-area');
-    seatsArea.innerHTML = '';
-
-    for (let i = 0; i < 4; i++) {
-        const seat = bjSeats[i];
-        let seatClass = (i === myBjSeatIndex) ? "bj-player-seat my-seat" : "bj-player-seat";
-        
-        // 現在ターン中の席を強調
-        if (bjTimer && bjCurrentTurn === i && seat && seat.status === 'playing') {
-            seatClass += " pulse-animation"; // ターン中のエフェクト（任意）
-            styleAttr = "border-color: #2ecc71; background: rgba(46, 204, 113, 0.2);";
-        } else {
-            styleAttr = "";
-        }
-        
-        let content = '';
-        if (seat) {
-            const score = seat.hand.length > 0 ? `<br><span style="color:#f1c40f;">(${calcBjScore(seat.hand)})</span>` : '';
-            const betText = seat.bet > 0 ? `<div style="font-size:10px; background:rgba(0,0,0,0.6); padding:2px; border-radius:4px;">🪙${seat.bet}</div>` : '';
-            const statusText = seat.status === 'burst' ? '<span style="color:#e74c3c;font-weight:bold;">BURST</span>' : (seat.status === 'stand' ? '<span style="color:#3498db;">STAND</span>' : '');
-
-            content = `
-                ${betText}
-                <div style="font-size:24px;">${seat.avatar}</div>
-                <div style="font-size:10px; font-weight:bold;">${seat.name}</div>
-                <div style="font-size:10px; color:#bdc3c7;">${seat.isNpc ? '🪙' + seat.coins : ''}</div>
-                <div id="bj-seat-cards-${i}" style="min-height:30px; margin-top:5px;">${renderBjCards(seat.hand)}</div>
-                <div style="font-size:11px;">${statusText}${score}</div>
-            `;
-        } else {
-            content = `<div style="font-size:10px; color:#7f8c8d; margin-top:auto; margin-bottom:auto;">空席</div>`;
-        }
-
-        seatsArea.innerHTML += `<div class="${seatClass}" id="bj-seat-${i}" style="${styleAttr}">${content}</div>`;
-    }
-}
-
-// タイマー機能
-function startBjTimer(infoText, seconds, callback) {
-    clearInterval(bjTimer);
-    document.getElementById('bj-info-text').innerText = infoText;
-    bjTimeLeft = seconds;
-    document.getElementById('bj-timer-display').innerText = bjTimeLeft;
-
-    bjTimer = setInterval(() => {
-        bjTimeLeft--;
-        document.getElementById('bj-timer-display').innerText = bjTimeLeft;
-        
-        if (bjTimeLeft <= 0) {
-            clearInterval(bjTimer);
-            if (callback) callback();
-        }
+// 疑似タイマー（見た目だけ）
+function runVisualTimer(seconds) {
+    clearInterval(localTimerId);
+    let left = seconds;
+    document.getElementById('bj-timer-display').innerText = left;
+    localTimerId = setInterval(() => {
+        left--;
+        document.getElementById('bj-timer-display').innerText = left > 0 ? left : 0;
+        if(left <= 0) clearInterval(localTimerId);
     }, 1000);
 }
 
-// ゲーム開始（カードを全員に2枚ずつ配る）
-function startBjGame() {
-    initBjDeck();
-    bjDealerHand = [drawBjCard(), drawBjCard()];
+// ロビー画面を開く (Firebaseから本物のテーブル情報を取得)
+async function goToBjLobby() {
+    clearInterval(localTimerId);
+    if(unsubscribeBj) { unsubscribeBj(); unsubscribeBj = null; }
     
-    // ディーラーの初期表示（2枚目は「？」）
-    document.getElementById('bj-dealer-cards').innerHTML = renderBjCards(bjDealerHand, true);
+    const channelList = document.getElementById('bj-channel-list');
+    channelList.innerHTML = '<div style="text-align:center; color:#7f8c8d;">オンラインテーブルを取得中...</div>';
+    showScreen('screen-bj-lobby');
 
-    // 各アクティブ席に2枚ずつ配る
-    for (let i = 0; i < 4; i++) {
-        if (bjSeats[i] && bjSeats[i].bet > 0) {
-            bjSeats[i].hand = [drawBjCard(), drawBjCard()];
-            bjSeats[i].status = "playing";
-        }
-    }
-    
-    bjCurrentTurn = 0;
-    renderBjSeatsUI();
-    nextBjTurn();
-}
+    if(unsubscribeBjLobby) unsubscribeBjLobby();
+    unsubscribeBjLobby = window.onSnapshot(window.collection(window.db, "bj_tables"), (snapshot) => {
+        let tables = { "table_1": null, "table_2": null, "table_3": null };
+        snapshot.forEach(doc => { if (tables[doc.id] !== undefined) tables[doc.id] = doc.data(); });
 
-// NPCのAI思考（16以下はヒット、17以上はスタンド）
-function npcAiAction(seat) {
-    const score = calcBjScore(seat.hand);
-    if (score <= 16) {
-        // ヒット
-        seat.hand.push(drawBjCard());
-        if (calcBjScore(seat.hand) > 21) {
-            seat.status = "burst";
-            bjCurrentTurn++;
-            setTimeout(nextBjTurn, 1000);
-        } else {
-            // まだ16以下ならもう一度引くチャンス（連続行動）
-            setTimeout(() => { npcAiAction(seat); }, 1200);
-        }
-    } else {
-        // スタンド
-        seat.status = "stand";
-        bjCurrentTurn++;
-        setTimeout(nextBjTurn, 1000);
-    }
-    renderBjSeatsUI();
-}
+        channelList.innerHTML = '';
+        for (let i = 1; i <= 3; i++) {
+            let tid = "table_" + i;
+            let tData = tables[tid];
+            let seatsHtml = '';
+            let seatData = tData ? tData.seats : [null, null, null, null];
+            let isPlaying = tData && tData.status !== 'waiting';
 
-    // 順番にプレイヤーのターンを処理していく
-function nextBjTurn() {
-    if (bjCurrentTurn >= 4) {
-        dealerBjTurn(); 
-        return;
-    }
-
-    const currentSeat = bjSeats[bjCurrentTurn];
-    if (!currentSeat || currentSeat.status !== "playing") {
-        bjCurrentTurn++;
-        nextBjTurn();
-        return;
-    }
-
-    renderBjSeatsUI();
-
-    if (!currentSeat.isNpc) {
-        // あなたのターンの場合（ボタンを表示）
-        document.getElementById('bj-play-buttons').style.display = 'flex';
-        
-        // 所持金が足りていて、最初の2枚の時だけダブルダウン可能
-        const canDouble = (currentSeat.hand.length === 2 && coins >= currentSeat.bet);
-        const doubleBtn = document.getElementById('bj-btn-double');
-        doubleBtn.disabled = !canDouble;
-        doubleBtn.style.opacity = canDouble ? "1" : "0.5";
-        
-        startBjTimer("あなたのアクションを選択してください（制限時間15秒）", 15, () => {
-            bjStand();
-        });
-    } else {
-        document.getElementById('bj-play-buttons').style.display = 'none';
-        startBjTimer(`${currentSeat.name} の思考中...`, 3, null);
-        setTimeout(() => { npcAiAction(currentSeat); }, 1500);
-    }
-}
-
-// あなたが「ヒット」を押した時
-function bjHit() {
-    const mySeat = bjSeats[myBjSeatIndex];
-    if (!mySeat || bjCurrentTurn !== myBjSeatIndex) return;
-
-    mySeat.hand.push(drawBjCard());
-    renderBjSeatsUI();
-
-    if (calcBjScore(mySeat.hand) > 21) {
-        mySeat.status = "burst";
-        document.getElementById('bj-play-buttons').style.display = 'none';
-        clearInterval(bjTimer);
-        
-        bjCurrentTurn++;
-        setTimeout(nextBjTurn, 1000);
-    } else {
-        // 3枚目以降はダブルダウン不可
-        const doubleBtn = document.getElementById('bj-btn-double');
-        doubleBtn.disabled = true;
-        doubleBtn.style.opacity = "0.5";
-        startBjTimer("あなたのアクションを選択してください", 15, () => { bjStand(); });
-    }
-}
-
-// あなたが「スタンド」を押した時
-function bjStand() {
-    const mySeat = bjSeats[myBjSeatIndex];
-    if (!mySeat || bjCurrentTurn !== myBjSeatIndex) return;
-
-    mySeat.status = "stand";
-    document.getElementById('bj-play-buttons').style.display = 'none';
-    clearInterval(bjTimer);
-
-    bjCurrentTurn++;
-    setTimeout(nextBjTurn, 800);
-}
-
-// ▼新規追加：ダブルダウン処理▼
-function bjDoubleDown() {
-    const mySeat = bjSeats[myBjSeatIndex];
-    if (!mySeat || bjCurrentTurn !== myBjSeatIndex) return;
-    
-    if (coins < mySeat.bet) {
-        alert("コインが足りません！");
-        return;
-    }
-
-    // 掛金を倍にする
-    coins -= mySeat.bet;
-    mySeat.bet *= 2;
-    if (typeof updateCoinUI === 'function') updateCoinUI();
-
-    // 1枚だけ引いて強制的にスタンド状態にする
-    mySeat.hand.push(drawBjCard());
-    renderBjSeatsUI();
-
-    document.getElementById('bj-play-buttons').style.display = 'none';
-    clearInterval(bjTimer);
-
-    if (calcBjScore(mySeat.hand) > 21) {
-        mySeat.status = "burst";
-    } else {
-        mySeat.status = "stand";
-    }
-    
-    bjCurrentTurn++;
-    setTimeout(nextBjTurn, 1000);
-}
-
-// ディーラーのターン（17以上になるまで引き続ける）
-function dealerBjTurn() {
-    document.getElementById('bj-info-text').innerText = "ディーラーのターンです...";
-    // 隠していた2枚目のカードを公開
-    document.getElementById('bj-dealer-cards').innerHTML = renderBjCards(bjDealerHand, false);
-    
-    const dealerProcess = () => {
-        let score = calcBjScore(bjDealerHand);
-        document.getElementById('bj-dealer-cards').innerHTML = renderBjCards(bjDealerHand, false) + `<br><span style="color:#f1c40f;">(${score})</span>`;
-        
-        if (score < 17) {
-            bjDealerHand.push(drawBjCard());
-            setTimeout(dealerProcess, 1200);
-        } else {
-            finishBjGame();
-        }
-    };
-    
-    setTimeout(dealerProcess, 1000);
-}
-
-// ゲーム終了・結果判定とコインの払い戻し
-function finishBjGame() {
-    const dealerScore = calcBjScore(bjDealerHand);
-    let myResultText = "";
-
-    for (let i = 0; i < 4; i++) {
-        const seat = bjSeats[i];
-        if (!seat || seat.bet === 0) continue;
-
-        const playerScore = calcBjScore(seat.hand);
-        
-        if (seat.status === "burst") {
-            // バーストは一発負け
-            seat.status = "burst"; 
-        } else if (dealerScore > 21 || playerScore > dealerScore) {
-            // ディーラーがバースト、またはプレイヤーの方が強い＝勝ち
-            if (!seat.isNpc) {
-                const winAmount = seat.bet * 2;
-                coins += winAmount;
-                myResultText = `🎉 あなたの勝ち！ +${winAmount}🪙`;
-            } else {
-                seat.coins += seat.bet * 2;
+            for (let s = 0; s < 4; s++) {
+                let seat = seatData[s];
+                if (seat) {
+                    seatsHtml += `<div class="bj-seat-btn bj-seat-taken" style="background:#34495e;">${seat.avatar}<br>${seat.name}</div>`;
+                } else if (isPlaying) {
+                    seatsHtml += `<div class="bj-seat-btn bj-seat-taken" style="background:#7f8c8d;">プレイ中</div>`;
+                } else {
+                    seatsHtml += `<button class="bj-seat-btn bj-seat-empty" onclick="joinBjTable('${tid}', ${s})">座る</button>`;
+                }
             }
-        } else if (playerScore === dealerScore) {
-            // 引き分け (プッシュ) 返金
-            if (!seat.isNpc) {
-                coins += seat.bet;
-                myResultText = "🤝 引き分け (コインが戻りました)";
-            } else {
-                seat.coins += seat.bet;
-            }
-        } else {
-            // 負け
-            if (!seat.isNpc) {
-                myResultText = "💀 あなたの負け...";
-            }
-        }
-    }
-
-    if (typeof updateCoinUI === 'function') updateCoinUI();
-    renderBjSeatsUI();
-
-    document.getElementById('bj-info-text').innerHTML = `<span style="font-size:18px; color:#fff;">${myResultText || "ゲーム終了"}</span>`;
-    
-    // 6秒後に自動的に次のゲームのベット受付（ロビーに戻らず連戦）へ移行
-    startBjTimer("間もなく次のゲームが始まります...", 6, () => {
-        // 自分の席のインデックスを保持したままリスタート
-        if (myBjSeatIndex !== -1) {
-            joinBjTable(myBjSeatIndex);
-        } else {
-            goToBjLobby();
+            channelList.innerHTML += `
+                <div class="bj-channel">
+                    <div style="font-weight: bold; color: #2c3e50;">テーブル ${i} (オンライン)</div>
+                    <div class="bj-seats-preview">${seatsHtml}</div>
+                </div>
+            `;
         }
     });
 }
 
-function leaveBjTable() {
-    clearInterval(bjTimer);
+// オンラインテーブルに参加
+async function joinBjTable(tableId, seatIndex) {
+    if (unsubscribeBjLobby) { unsubscribeBjLobby(); unsubscribeBjLobby = null; }
+    
+    myBjSeatIndex = seatIndex;
+    currentBjTableId = tableId;
+
+    const tableRef = window.doc(window.db, "bj_tables", tableId);
+    
+    try {
+        // 排他処理で席を確保
+        await window.runTransaction(window.db, async (t) => {
+            const docSnap = await t.get(tableRef);
+            let data = docSnap.exists() ? docSnap.data() : {
+                hostId: myPlayerId, status: "waiting", currentTurn: 0, dealerHand: [], seats: [null, null, null, null]
+            };
+
+            if (data.seats[seatIndex] !== null) throw "タッチの差で埋まってしまいました！";
+            if (data.status !== "waiting") throw "現在ゲームが進行中です。";
+
+            let activeCount = data.seats.filter(s => s !== null).length;
+            if (activeCount === 0) data.hostId = myPlayerId; // 最初の人がホスト（進行役）になる
+
+            data.seats[seatIndex] = {
+                playerId: myPlayerId,
+                name: document.getElementById('player-name').innerText.replace('👑 ', ''),
+                avatar: currentAvatar.includes('.png') ? '🧑‍💻' : currentAvatar,
+                bet: 0, hand: [], status: "waiting"
+            };
+            t.set(tableRef, data);
+        });
+        
+        listenToBjTable(); // 監視開始
+        showScreen('screen-bj-game');
+        
+        document.getElementById('bj-dealer-cards').innerHTML = '';
+        document.getElementById('bj-bet-buttons').style.display = 'flex';
+        document.getElementById('bj-play-buttons').style.display = 'none';
+        document.getElementById('bj-timer-display').innerText = "∞";
+        
+    } catch (e) {
+        alert(e);
+        goToBjLobby();
+    }
+}
+
+// テーブルのリアルタイム監視
+function listenToBjTable() {
+    if (unsubscribeBj) unsubscribeBj();
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    
+    unsubscribeBj = window.onSnapshot(tableRef, (docSnap) => {
+        if (!docSnap.exists()) { leaveBjTable(); return; }
+        const data = docSnap.data();
+        
+        bjSeats = data.seats;
+        bjDealerHand = data.dealerHand || [];
+        bjCurrentTurn = data.currentTurn;
+        bjGameStatus = data.status;
+        isBjHost = (data.hostId === myPlayerId);
+
+        // 状態リセット
+        if (bjGameStatus === 'waiting') { hasResolvedPayout = false; isDealerRunning = false; }
+        if (bjGameStatus === 'playing') { clearInterval(localTimerId); hostTimerStarted = false; }
+        
+        renderBjSeatsUI();
+        updateBjGameUI();
+
+        // 決着フェーズなら払い戻しを実行
+        if (bjGameStatus === 'resolving' && !hasResolvedPayout) {
+            hasResolvedPayout = true;
+            resolveBjPayouts();
+        }
+
+        // ホストの場合はゲームの進行チェックも兼任
+        if (isBjHost) checkHostProgress(data);
+    });
+}
+
+// ホスト専用：ゲーム進行管理
+function checkHostProgress(data) {
+    if (data.status === 'waiting') {
+        let hasReady = data.seats.some(s => s && s.status === 'ready');
+        if (hasReady && !hostTimerStarted) {
+            hostTimerStarted = true;
+            setTimeout(async () => { await hostStartGame(); }, 8000); // 誰かがベットしたら8秒後に強制開始
+        }
+    } else if (data.status === 'playing') {
+        let cTurn = data.currentTurn;
+        if (cTurn < 4) {
+            let seat = data.seats[cTurn];
+            // 空席か、プレイが終わった席ならスキップして次へ
+            if (!seat || seat.status !== 'playing') advanceTurnInDB(cTurn + 1);
+        } else if (cTurn === 4) {
+            hostDealerTurn(data); // ディーラーの番
+        }
+    }
+}
+
+async function advanceTurnInDB(nextIdx) {
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    await window.updateDoc(tableRef, { currentTurn: nextIdx });
+}
+
+// ホスト専用：ゲーム開始（カード配布）
+async function hostStartGame() {
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    await window.runTransaction(window.db, async (t) => {
+        const snap = await t.get(tableRef);
+        let d = snap.data();
+        if (d.status !== 'waiting') return;
+
+        d.dealerHand = [getRandomCard(), getRandomCard()];
+        for (let i = 0; i < 4; i++) {
+            if (d.seats[i]) {
+                if (d.seats[i].bet > 0) {
+                    d.seats[i].hand = [getRandomCard(), getRandomCard()];
+                    d.seats[i].status = "playing";
+                } else {
+                    d.seats[i] = null; // ベットしなかった人は強制退室
+                }
+            }
+        }
+        d.status = 'playing';
+        d.currentTurn = 0;
+        t.update(tableRef, d);
+    });
+}
+
+// ホスト専用：ディーラーの自動ドロー
+async function hostDealerTurn(data) {
+    if (isDealerRunning) return;
+    isDealerRunning = true;
+
+    let currentHand = [...data.dealerHand];
+    while (calcBjScore(currentHand) < 17) {
+        currentHand.push(getRandomCard());
+    }
+
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    await window.runTransaction(window.db, async (t) => {
+        const snap = await t.get(tableRef);
+        let d = snap.data();
+        d.dealerHand = currentHand;
+        d.status = 'resolving';
+        t.update(tableRef, d);
+    });
+}
+
+// ベットする (Firebaseへ送信)
+async function bjPlaceBet(amount) {
+    if (coins < amount) { alert("コインが足りません！"); return; }
+    coins -= amount;
+    updateCoinUI();
+    document.getElementById('bj-bet-buttons').style.display = 'none';
+
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    await window.runTransaction(window.db, async (t) => {
+        const snap = await t.get(tableRef);
+        let d = snap.data();
+        if(d.seats[myBjSeatIndex]) {
+            d.seats[myBjSeatIndex].bet = amount;
+            d.seats[myBjSeatIndex].status = "ready";
+            t.update(tableRef, { seats: d.seats });
+        }
+    });
+}
+
+// ヒット (Firebaseへ送信)
+async function bjHit() {
+    document.getElementById('bj-play-buttons').style.display = 'none';
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    await window.runTransaction(window.db, async (t) => {
+        const snap = await t.get(tableRef);
+        let d = snap.data();
+        if (d.currentTurn !== myBjSeatIndex) return;
+
+        d.seats[myBjSeatIndex].hand.push(getRandomCard());
+        if (calcBjScore(d.seats[myBjSeatIndex].hand) > 21) {
+            d.seats[myBjSeatIndex].status = 'burst';
+            d.currentTurn++;
+        }
+        t.update(tableRef, d);
+    });
+}
+
+// スタンド (Firebaseへ送信)
+async function bjStand() {
+    document.getElementById('bj-play-buttons').style.display = 'none';
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    await window.runTransaction(window.db, async (t) => {
+        const snap = await t.get(tableRef);
+        let d = snap.data();
+        if (d.currentTurn !== myBjSeatIndex) return;
+        d.seats[myBjSeatIndex].status = 'stand';
+        d.currentTurn++;
+        t.update(tableRef, d);
+    });
+}
+
+// ダブルダウン (Firebaseへ送信)
+async function bjDoubleDown() {
+    const amount = bjSeats[myBjSeatIndex].bet;
+    if (coins < amount) { alert("コイン不足！"); return; }
+    coins -= amount;
+    updateCoinUI();
+    document.getElementById('bj-play-buttons').style.display = 'none';
+
+    const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+    await window.runTransaction(window.db, async (t) => {
+        const snap = await t.get(tableRef);
+        let d = snap.data();
+        if (d.currentTurn !== myBjSeatIndex) return;
+        
+        d.seats[myBjSeatIndex].bet *= 2;
+        d.seats[myBjSeatIndex].hand.push(getRandomCard());
+        
+        if (calcBjScore(d.seats[myBjSeatIndex].hand) > 21) {
+            d.seats[myBjSeatIndex].status = 'burst';
+        } else {
+            d.seats[myBjSeatIndex].status = 'stand';
+        }
+        d.currentTurn++;
+        t.update(tableRef, d);
+    });
+}
+
+// UIの描画管理
+function updateBjGameUI() {
+    const infoEl = document.getElementById('bj-info-text');
+    
+    if (bjGameStatus === 'waiting') {
+        let mySeat = bjSeats[myBjSeatIndex];
+        if (mySeat && mySeat.bet === 0) {
+            document.getElementById('bj-bet-buttons').style.display = 'flex';
+            document.getElementById('bj-play-buttons').style.display = 'none';
+            infoEl.innerText = "ベット額を選んでください";
+        } else {
+            let hasReady = bjSeats.some(s => s && s.status === 'ready');
+            if (hasReady) {
+                if (!localTimerId) runVisualTimer(8);
+                infoEl.innerText = "まもなくゲームが開始されます...";
+            } else {
+                infoEl.innerText = "他のプレイヤーを待っています...";
+            }
+        }
+    } 
+    else if (bjGameStatus === 'playing') {
+        document.getElementById('bj-bet-buttons').style.display = 'none';
+        document.getElementById('bj-timer-display').innerText = "PLAY";
+        
+        if (bjCurrentTurn === myBjSeatIndex) {
+            document.getElementById('bj-play-buttons').style.display = 'flex';
+            infoEl.innerText = "あなたの番です！アクションを選択してください";
+            
+            // ダブルダウン判定
+            const mySeat = bjSeats[myBjSeatIndex];
+            const canDouble = (mySeat.hand.length === 2 && coins >= mySeat.bet);
+            const doubleBtn = document.getElementById('bj-btn-double');
+            doubleBtn.disabled = !canDouble;
+            doubleBtn.style.opacity = canDouble ? "1" : "0.5";
+        } else {
+            document.getElementById('bj-play-buttons').style.display = 'none';
+            let activePlayer = bjSeats[bjCurrentTurn];
+            let pname = activePlayer ? activePlayer.name : "誰か";
+            infoEl.innerText = `${pname} のターンです...`;
+        }
+    } 
+    else if (bjGameStatus === 'resolving') {
+        document.getElementById('bj-play-buttons').style.display = 'none';
+        document.getElementById('bj-timer-display').innerText = "END";
+    }
+
+    // ディーラーのカード表示
+    if (bjDealerHand.length > 0) {
+        let hideFirst = (bjGameStatus === 'playing');
+        document.getElementById('bj-dealer-cards').innerHTML = renderBjCards(bjDealerHand, hideFirst);
+        if (!hideFirst) {
+            let score = calcBjScore(bjDealerHand);
+            document.getElementById('bj-dealer-cards').innerHTML += `<br><span style="color:#f1c40f; font-size:16px;">(${score})</span>`;
+        }
+    }
+}
+
+// 席のUI更新
+function renderBjSeatsUI() {
+    const seatsArea = document.getElementById('bj-seats-area');
+    seatsArea.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+        const seat = bjSeats[i];
+        let seatClass = (i === myBjSeatIndex) ? "bj-player-seat my-seat" : "bj-player-seat";
+        let styleAttr = (bjGameStatus === 'playing' && bjCurrentTurn === i && seat) 
+            ? "border-color: #2ecc71; background: rgba(46, 204, 113, 0.2);" : "";
+        
+        if (seat) {
+            const score = seat.hand.length > 0 ? `<br><span style="color:#f1c40f;">(${calcBjScore(seat.hand)})</span>` : '';
+            const betText = seat.bet > 0 ? `<div style="font-size:10px; background:rgba(0,0,0,0.6); padding:2px; border-radius:4px;">🪙${seat.bet}</div>` : '';
+            const statusText = seat.status === 'burst' ? '<span style="color:#e74c3c;font-weight:bold;">BURST</span>' 
+                             : (seat.status === 'stand' ? '<span style="color:#3498db;">STAND</span>' : '');
+
+            seatsArea.innerHTML += `
+                <div class="${seatClass}" style="${styleAttr}">
+                    ${betText}
+                    <div style="font-size:24px;">${seat.avatar}</div>
+                    <div style="font-size:10px; font-weight:bold; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${seat.name}</div>
+                    <div id="bj-seat-cards-${i}" style="min-height:30px; margin-top:5px;">${renderBjCards(seat.hand)}</div>
+                    <div style="font-size:11px;">${statusText}${score}</div>
+                </div>`;
+        } else {
+            seatsArea.innerHTML += `<div class="bj-player-seat"><div style="font-size:10px; color:#7f8c8d; margin-top:auto; margin-bottom:auto;">空席</div></div>`;
+        }
+    }
+}
+
+// 勝敗判定と払い戻し
+function resolveBjPayouts() {
+    const dealerScore = calcBjScore(bjDealerHand);
+    let mySeat = bjSeats[myBjSeatIndex];
+    
+    if (mySeat && mySeat.bet > 0) {
+        const playerScore = calcBjScore(mySeat.hand);
+        if (mySeat.status === 'burst') {
+            document.getElementById('bj-info-text').innerHTML = `<span style="color:#e74c3c; font-size:18px;">💀 バースト... 掛金没収</span>`;
+        } else if (dealerScore > 21 || playerScore > dealerScore) {
+            let winAmt = mySeat.bet * 2;
+            coins += winAmt;
+            document.getElementById('bj-info-text').innerHTML = `<span style="color:#2ecc71; font-size:18px;">🎉 WIN! +${winAmt}🪙</span>`;
+        } else if (playerScore === dealerScore) {
+            coins += mySeat.bet;
+            document.getElementById('bj-info-text').innerHTML = `<span style="color:#f1c40f; font-size:18px;">🤝 PUSH (引き分け・返金)</span>`;
+        } else {
+            document.getElementById('bj-info-text').innerHTML = `<span style="color:#e74c3c; font-size:18px;">💀 LOSE... 掛金没収</span>`;
+        }
+        updateCoinUI();
+        saveGameState();
+    }
+
+    // 進行役（ホスト）が5秒後にテーブルをリセットする
+    if (isBjHost) {
+        setTimeout(async () => {
+            const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+            await window.updateDoc(tableRef, {
+                status: 'waiting',
+                currentTurn: 0,
+                dealerHand: [],
+                seats: bjSeats.map(s => s ? { ...s, hand: [], bet: 0, status: 'waiting' } : null)
+            });
+        }, 5000);
+    }
+}
+
+// 席を立つ (ホスト権限の譲渡など)
+async function leaveBjTable() {
+    clearInterval(localTimerId);
+    if (unsubscribeBj) { unsubscribeBj(); unsubscribeBj = null; }
+    
+    if (currentBjTableId && myBjSeatIndex !== -1) {
+        const tableRef = window.doc(window.db, "bj_tables", currentBjTableId);
+        try {
+            await window.runTransaction(window.db, async (t) => {
+                const snap = await t.get(tableRef);
+                if (!snap.exists()) return;
+                let d = snap.data();
+                d.seats[myBjSeatIndex] = null; // 自分を空席にする
+                
+                let activeCount = d.seats.filter(s => s !== null).length;
+                if (activeCount === 0) {
+                    d.hostId = null; // 全員いなくなったら初期化
+                    d.status = 'waiting';
+                } else if (d.hostId === myPlayerId) {
+                    let nextHost = d.seats.find(s => s !== null);
+                    d.hostId = nextHost.playerId; // 次の人にホストをパス
+                }
+                t.update(tableRef, d);
+            });
+        } catch(e) {}
+    }
     myBjSeatIndex = -1;
+    currentBjTableId = null;
+    isBjHost = false;
     goToBjLobby();
 }
     
@@ -2504,6 +2528,7 @@ function cancelWaitingRoomIfNeeded() {
 window.addEventListener('beforeunload', () => {
     saveGameState();
     cancelWaitingRoomIfNeeded(); 
+    if (currentBjTableId) leaveBjTable();
 });
 
 // スマホでホーム画面に戻ったり、タブを切り替えたとき（一番確実！）
