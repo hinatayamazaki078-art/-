@@ -1054,6 +1054,10 @@ let unsubscribeLobby = null;    // ロビー監視の解除用関数
         // エントリー中の場合は払い戻し＆キャンセルを執行
         await cancelEntry();
 
+        if (currentBjTableId) {
+        leaveBjTable();
+    }
+
         document.getElementById('set-info').style.display = 'none';
 
         // stopBGM(); // ← コメントアウト（または行ごと削除）してBGMを止めないようにする
@@ -2097,6 +2101,10 @@ function runVisualTimer(seconds) {
 
 // オンラインテーブルに参加
 async function joinBjTable(tableId, seatIndex) {
+    if (currentBjTableId !== null || myBjSeatIndex !== -1) {
+        alert("すでに席に座っています！別の席に移動する場合は、一度「席を立つ」を押してください。");
+        return;
+    }
     if (unsubscribeBjLobby) { unsubscribeBjLobby(); unsubscribeBjLobby = null; }
     
     myBjSeatIndex = seatIndex;
@@ -2585,6 +2593,7 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         saveGameState(); 
         cancelWaitingRoomIfNeeded(); // ここで部屋を消す処理を実行！
+        if (currentBjTableId) leaveBjTable();
     } else if (document.visibilityState === 'visible') {
         checkAfkRewards(); 
     }
