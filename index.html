@@ -2818,7 +2818,54 @@ async function openOtherPlayerProfile(userId) {
     }
 }
 
-function closeOtherProfile() {
+// =========================================
+// 不足していた画面切り替え用関数の追加
+// =========================================
+
+function goToRoulette() {
+    showScreen('screen-roulette');
+}
+
+function goToSlot() {
+    showScreen('screen-slot');
+}
+
+function goToBjLobby() {
+    showScreen('screen-bj-lobby');
+}
+
+function openShopMenu() {
+    showScreen('screen-shop-menu');
+}
+
+function goToLobbyScreen() {
+    showScreen('screen-lobby');
+}
+
+function openRanking() {
+    // ランキングはオーバーレイ表示
+    document.getElementById('ranking-overlay').style.display = 'flex';
+}
+
+function closeRanking() {
+    document.getElementById('ranking-overlay').style.display = 'none';
+}
+
+// プロフィール機能用の補完
+function openProfile() {
+    document.getElementById('profile-overlay').style.display = 'flex';
+}
+
+function closeProfile() {
+    document.getElementById('profile-overlay').style.display = 'none';
+}
+
+function closeProfileAndGoToAssets() {
+    closeProfile();
+    goToAssetsScreen();
+}
+    
+    function closeOtherProfile() {
     document.getElementById('other-profile-overlay').style.display = 'none';
 }
     
