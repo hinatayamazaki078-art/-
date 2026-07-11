@@ -598,7 +598,9 @@
         </div>
 
         <!-- 4. ボタンエリア (手前に配置してクリックできるようにする) -->
+        <!-- ⚠️注意: もし元の<div ...>の中に id="○○" があった場合は、それも追記してください -->
         <div style="position: relative; z-index: 10; padding: 0 10px;">
+            
             <!-- ショップボタン (少しだけ縮小してスッキリ) -->
             <div style="text-align: center; margin-bottom: 10px;">
                 <img src="ショップボタン.png" alt="Shop" style="width: 60%; max-width: 240px; cursor: pointer; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); transition: transform 0.1s;" onclick="openShopMenu()" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
@@ -606,23 +608,24 @@
             
             <!-- カジノ・ソロプレイ系 (2列グリッドでコンパクトに) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                <button class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #2ecc71, #27ae60); color: #fff; border-color: #27ae60; margin-bottom: 0;" onclick="goToRoulette()">🎡 ルーレット</button>
-                <button class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: #fff; border-color: #8e44ad; margin-bottom: 0;" onclick="goToSlot()">🎰 スロット</button>
-                <button class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #1abc9c, #16a085); color: #fff; border-color: #1abc9c; margin-bottom: 0;" onclick="goToBjLobby()">🃏 ブラックジャック</button>
-                <button class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; margin-bottom: 0;" onclick="goToBuildScreen(false)">⚔️ オフライン練習</button>
+                <button type="button" class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #2ecc71, #27ae60); color: #fff; border-color: #27ae60; margin-bottom: 0;" onclick="goToRoulette()">🎡 ルーレット</button>
+                <button type="button" class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: #fff; border-color: #8e44ad; margin-bottom: 0;" onclick="goToSlot()">🎰 スロット</button>
+                <button type="button" class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #1abc9c, #16a085); color: #fff; border-color: #1abc9c; margin-bottom: 0;" onclick="goToBjLobby()">🃏 ブラックジャック</button>
+                <button type="button" class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; margin-bottom: 0;" onclick="goToBuildScreen(false)">⚔️ オフライン練習</button>
             </div>
 
             <!-- アバター＆ランキング (2列グリッド) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                <button class="change-avatar-btn" style="width:100%; padding: 8px 5px; font-size: 12px; margin-bottom: 0;" onclick="openAvatarList()">👕 アバター変更</button>
-                <button class="gacha-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #f1c40f, #f39c12); color: #111; margin-bottom: 0;" onclick="openRanking()">👑 ランキング</button>
+                <button type="button" class="change-avatar-btn" style="width:100%; padding: 8px 5px; font-size: 12px; margin-bottom: 0;" onclick="openAvatarList()">👕 アバター変更</button>
+                <button type="button" class="gacha-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #f1c40f, #f39c12); color: #111; margin-bottom: 0;" onclick="openRanking()">👑 ランキング</button>
             </div>
             
             <!-- オンライン対戦系ボタン (2列グリッド) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                <button class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22; margin-bottom: 0;" onclick="goToLobbyScreen()">🪑 席を探す</button>
-                <button class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #2980b9, #1a5276); color: #fff; border-color: #1f618d; margin-bottom: 0;" onclick="startRankMatch()">🏆 ランクマッチ</button>
+                <button type="button" class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22; margin-bottom: 0;" onclick="goToLobbyScreen()">🪑 席を探す</button>
+                <button type="button" class="battle-btn" style="width:100%; padding: 8px 5px; font-size: 12px; background: linear-gradient(145deg, #2980b9, #1a5276); color: #fff; border-color: #1f618d; margin-bottom: 0;" onclick="startRankMatch()">🏆 ランクマッチ</button>
             </div>
+            
         </div>
 
     <div id="screen-bet-select" class="screen">
