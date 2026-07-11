@@ -599,37 +599,34 @@
 
         <!-- 4. ボタンエリア (手前に配置してクリックできるようにする) -->
         <div style="position: relative; z-index: 10; padding: 0 10px;">
-            
-            <!-- ショップボタン (サイズを縮小して圧迫感を減らす) -->
-            <div style="text-align: center; margin-bottom: 12px;">
-                <img src="ショップボタン.png" alt="Shop" style="width: 55%; max-width: 200px; cursor: pointer; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); transition: transform 0.1s;" onclick="openShopMenu()" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
+            <!-- ショップボタン (少しだけ縮小) -->
+            <div style="text-align: center; margin-bottom: 10px;">
+                <img src="ショップボタン.png" alt="Shop" style="width: 70%; max-width: 260px; cursor: pointer; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); transition: transform 0.1s;" onclick="openShopMenu()" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'" ontouchstart="this.style.transform='scale(0.95)'" ontouchend="this.style.transform='scale(1)'">
             </div>
             
-            <!-- カジノ系ゲームを2列にまとめる -->
+            <button class="battle-btn" style="width:100%; padding: 10px; font-size: 14px; background: linear-gradient(145deg, #2ecc71, #27ae60); color: #fff; border-color: #27ae60; margin-bottom: 12px;" onclick="goToRoulette()">🎡 ルーレットに挑戦</button>
+           
+            <!-- スロット追加ボタン -->
+            <button class="battle-btn" style="width:100%; padding: 10px; font-size: 14px; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: #fff; border-color: #8e44ad; margin-bottom: 12px;" onclick="goToSlot()">🎰 スロットに挑戦</button>
+            
+            <!-- スロット追加ボタンの下あたりに追加 -->
+<button class="battle-btn" style="width:100%; padding: 10px; font-size: 14px; background: linear-gradient(145deg, #1abc9c, #16a085); color: #fff; border-color: #1abc9c; margin-bottom: 12px;" onclick="goToBjLobby()">🃏 ブラックジャック</button>
+            <!-- アバター変更ボタン (高さを抑えてスリム化) -->
+            <button class="change-avatar-btn" style="width:100%; padding: 10px; font-size: 14px; margin-bottom: 12px;" onclick="openAvatarList()">👕 アバターを変更する</button>
+
+            <!-- 追加例：ホーム画面のボタンエリア（オンライン対戦ボタンの上など）に配置 -->
+<button class="gacha-btn" style="width:100%; padding: 10px; font-size: 14px; background: linear-gradient(145deg, #f1c40f, #f39c12); color: #111; margin-bottom: 12px;" onclick="openRanking()">👑 総資産ランキング</button>
+            
+            <!-- オンライン対戦系ボタン (2列のグリッドにして横並びに配置) -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                <button class="battle-btn" style="width:100%; padding: 8px; font-size: 12px; background: linear-gradient(145deg, #2ecc71, #27ae60); color: #fff; border-color: #27ae60; margin-bottom: 0;" onclick="goToRoulette()">🎡 ルーレット</button>
-                <button class="battle-btn" style="width:100%; padding: 8px; font-size: 12px; background: linear-gradient(145deg, #8e44ad, #9b59b6); color: #fff; border-color: #8e44ad; margin-bottom: 0;" onclick="goToSlot()">🎰 スロット</button>
+                <button class="battle-btn" style="width:100%; padding: 12px 5px; font-size: 13px; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22; margin-bottom: 0;" onclick="goToLobbyScreen()">🪑 席を探す</button>
+                <button class="battle-btn" style="width:100%; padding: 12px 5px; font-size: 13px; background: linear-gradient(145deg, #2980b9, #1a5276); color: #fff; border-color: #1f618d; margin-bottom: 0;" onclick="startRankMatch()">🏆 ランクマッチ</button>
             </div>
 
-            <!-- BJとランキングを2列にまとめる -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                <button class="battle-btn" style="width:100%; padding: 8px; font-size: 12px; background: linear-gradient(145deg, #1abc9c, #16a085); color: #fff; border-color: #1abc9c; margin-bottom: 0;" onclick="goToBjLobby()">🃏 BJ</button>
-                <button class="gacha-btn" style="width:100%; padding: 8px; font-size: 12px; background: linear-gradient(145deg, #f1c40f, #f39c12); color: #111; margin-bottom: 0;" onclick="openRanking()">👑 ランキング</button>
-            </div>
-
-            <!-- オンライン対戦系ボタン (既存のグリッドを流用し少しスリムに) -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                <button class="battle-btn" style="width:100%; padding: 10px 5px; font-size: 12px; background: linear-gradient(145deg, #d35400, #a04000); color: #fff; border-color: #e67e22; margin-bottom: 0;" onclick="goToLobbyScreen()">🪑 席を探す</button>
-                <button class="battle-btn" style="width:100%; padding: 10px 5px; font-size: 12px; background: linear-gradient(145deg, #2980b9, #1a5276); color: #fff; border-color: #1f618d; margin-bottom: 0;" onclick="startRankMatch()">🏆 ランクマッチ</button>
-            </div>
-
-            <!-- アバター変更とオフライン練習 (使用頻度を考慮して下部に) -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                <button class="change-avatar-btn" style="width:100%; padding: 8px; font-size: 12px; margin-bottom: 0;" onclick="openAvatarList()">👕 着替える</button>
-                <button class="battle-btn" style="width:100%; padding: 8px; font-size: 12px; margin-bottom: 0;" onclick="goToBuildScreen(false)">⚔️ 練習モード</button>
-            </div>
-
+            <!-- オフライン練習ボタン (一番下にスッキリ配置) -->
+            <button class="battle-btn" style="width:100%; padding: 10px; font-size: 14px;" onclick="goToBuildScreen(false)">⚔️ オフライン練習モード</button>
         </div>
+    </div>
 
     <div id="screen-bet-select" class="screen">
         <h2 style="text-align: center; color: #2c3e50; margin-top: 10px;">掛金入力</h2>
@@ -2818,54 +2815,7 @@ async function openOtherPlayerProfile(userId) {
     }
 }
 
-// =========================================
-// 不足していた画面切り替え用関数の追加
-// =========================================
-
-function goToRoulette() {
-    showScreen('screen-roulette');
-}
-
-function goToSlot() {
-    showScreen('screen-slot');
-}
-
-function goToBjLobby() {
-    showScreen('screen-bj-lobby');
-}
-
-function openShopMenu() {
-    showScreen('screen-shop-menu');
-}
-
-function goToLobbyScreen() {
-    showScreen('screen-lobby');
-}
-
-function openRanking() {
-    // ランキングはオーバーレイ表示
-    document.getElementById('ranking-overlay').style.display = 'flex';
-}
-
-function closeRanking() {
-    document.getElementById('ranking-overlay').style.display = 'none';
-}
-
-// プロフィール機能用の補完
-function openProfile() {
-    document.getElementById('profile-overlay').style.display = 'flex';
-}
-
-function closeProfile() {
-    document.getElementById('profile-overlay').style.display = 'none';
-}
-
-function closeProfileAndGoToAssets() {
-    closeProfile();
-    goToAssetsScreen();
-}
-    
-    function closeOtherProfile() {
+function closeOtherProfile() {
     document.getElementById('other-profile-overlay').style.display = 'none';
 }
     
